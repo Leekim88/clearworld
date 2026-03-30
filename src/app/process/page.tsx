@@ -60,27 +60,46 @@ export default function ProcessPage() {
     }
   };
 
+  // 后端API地址
+  const API_BASE = 'https://clearworld-api.onrender.com';
+
   const handleProcess = async () => {
     if (!originalImage || !fileInputRef.current?.files?.[0]) return;
 
     setIsProcessing(true);
     setProgress(0);
 
-    // 模拟处理进度
     const progressInterval = setInterval(() => {
-      setProgress((prev) => Math.min(prev + Math.random() * 20, 90));
+      setProgress((prev) => Math.min(prev + Math.random() * 15, 85));
     }, 500);
 
     try {
-      // TODO: 这里调用后端 API 进行图片处理
-      // 暂时使用模拟数据
-      await new Promise((resolve) => setTimeout(resolve, 3000));
+      const file = fileInputRef.current.files[0];
+      const formData = new FormData();
+      formData.append('image', file);
+      formData.append('scale', String(settings.scale));
+      formData.append('model', settings.model);
+      formData.append('denoise', String(settings.denoise));
+      formData.append('format', settings.format);
+
+      const res = await fetch(`${API_BASE}/process`, {
+        method: 'POST',
+        body: formData,
+      });
+
+      if (!res.ok) {
+        throw new Error('处理失败');
+      }
+
+      const blob = await res.blob();
+      const url = URL.createObjectURL(blob);
 
       clearInterval(progressInterval);
       setProgress(100);
-      setProcessedImage(originalImage); // 暂时用原图代替
+      setProcessedImage(url);
     } catch (error) {
       console.error('处理失败:', error);
+      alert('处理失败，请稍后重试');
     } finally {
       setIsProcessing(false);
     }
