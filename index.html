@@ -1904,7 +1904,10 @@
             }
         }
 
-        function processImage() {
+        // 后端API地址
+        const API_BASE = 'https://clearworld-api.onrender.com';
+
+        async function processImage() {
             if (!originalImage || isProcessing) return;
 
             isProcessing = true;
@@ -1914,21 +1917,46 @@
 
             let progress = 0;
             const progressInterval = setInterval(() => {
-                progress += Math.random() * 15 + 5;
-                if (progress > 90) progress = 90;
+                progress += Math.random() * 10 + 5;
+                if (progress > 85) progress = 85;
                 document.getElementById('progress-fill').style.width = progress + '%';
                 document.getElementById('progress-text').textContent = Math.floor(progress) + '%';
-            }, 400);
+            }, 500);
 
-            // 模拟处理
-            setTimeout(() => {
+            try {
+                // 获取选择的参数
+                const scale = document.querySelector('.scale-btn.active')?.dataset.scale || '2';
+                const format = document.querySelector('.format-btn.active')?.dataset.format || 'jpg';
+
+                // 将base64转为blob
+                const response = await fetch(originalImage);
+                const blob = await response.blob();
+                const file = new File([blob], 'image.jpg', { type: blob.type });
+
+                // 创建FormData
+                const formData = new FormData();
+                formData.append('image', file);
+                formData.append('scale', scale);
+                formData.append('format', format);
+
+                // 发送到后端API
+                const res = await fetch(`${API_BASE}/process`, {
+                    method: 'POST',
+                    body: formData
+                });
+
+                if (!res.ok) {
+                    throw new Error('处理失败');
+                }
+
+                // 获取处理后的图片
+                const resultBlob = await res.blob();
+                processedImage = URL.createObjectURL(resultBlob);
+
                 clearInterval(progressInterval);
                 progress = 100;
                 document.getElementById('progress-fill').style.width = '100%';
                 document.getElementById('progress-text').textContent = '100%';
-
-                // 暂时用原图代替处理后的图
-                processedImage = originalImage;
 
                 setTimeout(() => {
                     document.getElementById('progress-area').style.display = 'none';
@@ -1944,7 +1972,6 @@
 
                     document.getElementById('compareContainer').style.display = 'block';
 
-                    // 淡入动画
                     setTimeout(() => {
                         beforeImg.style.transition = 'opacity 0.5s ease';
                         afterImg.style.transition = 'opacity 0.5s ease';
@@ -1952,7 +1979,6 @@
                         afterImg.style.opacity = '1';
                     }, 100);
 
-                    // 初始化滑块
                     initCompareSlider();
 
                     document.getElementById('processBtn').disabled = false;
@@ -1961,7 +1987,16 @@
 
                     showToast('处理完成！图片已生成');
                 }, 500);
-            }, 3000);
+
+            } catch (error) {
+                clearInterval(progressInterval);
+                document.getElementById('progress-area').style.display = 'none';
+                document.getElementById('processBtn').disabled = false;
+                document.getElementById('processBtn').innerHTML = '开始处理';
+                isProcessing = false;
+                console.error(error);
+                showToast('处理失败，请稍后重试');
+            }
         }
 
         function initCompareSlider() {
