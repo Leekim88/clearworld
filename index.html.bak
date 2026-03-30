@@ -1,0 +1,1591 @@
+<!DOCTYPE html>
+<html lang="zh-CN">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>ClearWorld 清晰世界 - AI 图片超分辨率</title>
+    <link href="https://fonts.googleapis.com/css2?family=Outfit:wght@300;400;500;600;700&display=swap" rel="stylesheet">
+    <style>
+        * {
+            font-family: 'Outfit', system-ui, sans-serif;
+            margin: 0;
+            padding: 0;
+            box-sizing: border-box;
+        }
+
+        body {
+            background: #0a0a0a;
+            min-height: 100vh;
+            overflow-x: hidden;
+            color: white;
+        }
+
+        /* 液态光晕动画 */
+        .liquid-orb {
+            position: fixed;
+            border-radius: 50%;
+            filter: blur(100px);
+            opacity: 0.5;
+            animation: liquidFloat 12s ease-in-out infinite;
+            pointer-events: none;
+            z-index: 0;
+        }
+
+        .orb-1 {
+            width: 500px;
+            height: 500px;
+            background: linear-gradient(135deg, #7c3aed 0%, #c026d3 50%, #ec4899 100%);
+            top: -200px;
+            left: 20%;
+            animation-delay: 0s;
+        }
+
+        .orb-2 {
+            width: 400px;
+            height: 400px;
+            background: linear-gradient(135deg, #06b6d4 0%, #3b82f6 50%, #6366f1 100%);
+            bottom: -150px;
+            right: 10%;
+            animation-delay: -4s;
+        }
+
+        .orb-3 {
+            width: 300px;
+            height: 300px;
+            background: linear-gradient(135deg, #f472b6 0%, #fb7185 100%);
+            top: 40%;
+            left: 50%;
+            transform: translateX(-50%);
+            animation-delay: -8s;
+            opacity: 0.3;
+        }
+
+        @keyframes liquidFloat {
+            0%, 100% { transform: translate(0, 0) scale(1); }
+            33% { transform: translate(30px, -30px) scale(1.1); }
+            66% { transform: translate(-20px, 20px) scale(0.95); }
+        }
+
+        /* 玻璃卡片 */
+        .glass-card {
+            background: linear-gradient(135deg, rgba(255,255,255,0.08) 0%, rgba(255,255,255,0.02) 100%);
+            backdrop-filter: blur(40px);
+            border: 1px solid rgba(255,255,255,0.1);
+            box-shadow: 0 25px 50px -12px rgba(0, 0, 0, 0.5), inset 0 1px 0 rgba(255,255,255,0.1);
+        }
+
+        /* 输入框 */
+        .input-dark {
+            background: rgba(255, 255, 255, 0.05);
+            border: 1px solid rgba(255, 255, 255, 0.1);
+            color: white;
+            transition: all 0.3s ease;
+            outline: none;
+        }
+
+        .input-dark::placeholder { color: rgba(255, 255, 255, 0.4); }
+        .input-dark:focus {
+            background: rgba(255, 255, 255, 0.1);
+            border-color: rgba(139, 92, 246, 0.5);
+            box-shadow: 0 0 30px rgba(139, 92, 246, 0.2);
+        }
+
+        /* 渐变按钮 */
+        .btn-gradient {
+            background: linear-gradient(135deg, #7c3aed 0%, #c026d3 100%);
+            position: relative;
+            z-index: 1;
+            border: none;
+            cursor: pointer;
+            transition: all 0.3s ease;
+        }
+
+        .btn-gradient:hover {
+            transform: translateY(-2px);
+            box-shadow: 0 20px 40px rgba(124, 58, 237, 0.4);
+        }
+
+        /* 功能卡片 */
+        .feature-card {
+            background: linear-gradient(135deg, rgba(255,255,255,0.05) 0%, rgba(255,255,255,0.02) 100%);
+            backdrop-filter: blur(20px);
+            border: 1px solid rgba(255,255,255, 0.08);
+            transition: all 0.3s ease;
+            cursor: pointer;
+        }
+
+        .feature-card:hover {
+            background: linear-gradient(135deg, rgba(139, 92, 246, 0.15) 0%, rgba(192, 38, 211, 0.1) 100%);
+            border-color: rgba(139, 92, 246, 0.3);
+            transform: translateY(-4px);
+            box-shadow: 0 20px 40px rgba(124, 58, 237, 0.2);
+        }
+
+        /* 上传区域 */
+        .upload-zone {
+            background: linear-gradient(135deg, rgba(255,255,255,0.05) 0%, rgba(255,255,255,0.02) 100%);
+            backdrop-filter: blur(20px);
+            border: 2px dashed rgba(255,255,255,0.1);
+            transition: all 0.3s ease;
+            cursor: pointer;
+        }
+
+        .upload-zone:hover {
+            border-color: rgba(139, 92, 246, 0.5);
+            background: linear-gradient(135deg, rgba(139, 92, 246, 0.1) 0%, rgba(192, 38, 211, 0.05) 100%);
+        }
+
+        .upload-zone.active {
+            border-color: rgba(139, 92, 246, 0.8);
+            background: linear-gradient(135deg, rgba(139, 92, 246, 0.15) 0%, rgba(192, 38, 211, 0.1) 100%);
+        }
+
+        #home-upload.active {
+            border-color: rgba(139, 92, 246, 0.8);
+            background: linear-gradient(135deg, rgba(139, 92, 246, 0.15) 0%, rgba(192, 38, 211, 0.1) 100%);
+        }
+
+        /* 页面显示 */
+        .page { display: none; }
+        .page.active { display: block; }
+
+        /* 对比滑块 */
+        .compare-container {
+            position: relative;
+            width: 100%;
+            height: 500px;
+            overflow: hidden;
+            border-radius: 12px;
+        }
+
+        .compare-image {
+            position: absolute;
+            top: 0;
+            left: 0;
+            width: 100%;
+            height: 100%;
+            object-fit: contain;
+            background: rgba(0,0,0,0.3);
+        }
+
+        .compare-before {
+            clip-path: inset(0 50% 0 0);
+        }
+
+        .compare-slider {
+            position: absolute;
+            top: 0;
+            left: 50%;
+            width: 4px;
+            height: 100%;
+            background: white;
+            cursor: ew-resize;
+            transform: translateX(-50%);
+            z-index: 10;
+            user-select: none;
+        }
+
+        .compare-slider::before {
+            content: '◄ ►';
+            position: absolute;
+            top: 50%;
+            left: 50%;
+            transform: translate(-50%, -50%);
+            background: white;
+            color: #7c3aed;
+            padding: 8px 12px;
+            border-radius: 20px;
+            font-size: 12px;
+            white-space: nowrap;
+        }
+
+        /* 进度条 */
+        .progress-bar {
+            height: 8px;
+            background: rgba(255,255,255,0.1);
+            border-radius: 999px;
+            overflow: hidden;
+        }
+
+        .progress-fill {
+            height: 100%;
+            background: linear-gradient(90deg, #7c3aed, #c026d3);
+            transition: width 0.3s ease;
+            border-radius: 999px;
+        }
+
+        /* 标签页 */
+        .tab-btn {
+            padding: 12px 24px;
+            border-radius: 12px;
+            font-weight: 500;
+            transition: all 0.3s ease;
+            background: transparent;
+            color: #9ca3af;
+            border: none;
+            cursor: pointer;
+        }
+
+        .tab-btn:hover { color: white; background: rgba(255,255,255,0.05); }
+        .tab-btn.active { background: #7c3aed; color: white; }
+
+        /* 选择按钮组 */
+        .option-group {
+            display: grid;
+            grid-template-columns: repeat(2, 1fr);
+            gap: 12px;
+        }
+
+        .option-btn {
+            padding: 16px;
+            border-radius: 12px;
+            border: 1px solid rgba(255,255,255,0.1);
+            background: transparent;
+            color: white;
+            cursor: pointer;
+            transition: all 0.3s ease;
+            text-align: center;
+        }
+
+        .option-btn:hover { border-color: rgba(255,255,255,0.3); }
+        .option-btn.selected {
+            border-color: #a855f7;
+            background: rgba(168, 85, 247, 0.2);
+        }
+
+        .option-btn .label { font-weight: 600; font-size: 18px; }
+        .option-btn .desc { font-size: 12px; color: rgba(255,255,255,0.4); margin-top: 4px; }
+
+        /* 小按钮组 */
+        .btn-group {
+            display: grid;
+            grid-template-columns: repeat(4, 1fr);
+            gap: 8px;
+        }
+
+        .btn-small {
+            padding: 10px;
+            border-radius: 8px;
+            border: 1px solid rgba(255,255,255,0.1);
+            background: transparent;
+            color: #9ca3af;
+            cursor: pointer;
+            transition: all 0.3s ease;
+            font-size: 14px;
+        }
+
+        .btn-small:hover { border-color: rgba(255,255,255,0.3); }
+        .btn-small.selected {
+            border-color: #a855f7;
+            background: rgba(168, 85, 247, 0.2);
+            color: white;
+        }
+
+        /* 格式按钮组 */
+        .format-group {
+            display: grid;
+            grid-template-columns: repeat(3, 1fr);
+            gap: 12px;
+        }
+
+        .format-btn {
+            padding: 10px;
+            border-radius: 8px;
+            border: 1px solid rgba(255,255,255,0.1);
+            background: transparent;
+            color: #9ca3af;
+            cursor: pointer;
+            transition: all 0.3s ease;
+            font-size: 14px;
+            text-transform: uppercase;
+        }
+
+        .format-btn:hover { border-color: rgba(255,255,255,0.3); }
+        .format-btn.selected {
+            border-color: #a855f7;
+            background: rgba(168, 85, 247, 0.2);
+            color: white;
+        }
+
+        /* 导航 */
+        .nav-link {
+            color: #9ca3af;
+            text-decoration: none;
+            transition: color 0.3s ease;
+        }
+        .nav-link:hover { color: white; }
+
+        /* 隐藏文件输入 */
+        #fileInput, #processFileInput { display: none; }
+
+        /* 居中内容 */
+        .center-content {
+            display: flex;
+            flex-direction: column;
+            align-items: center;
+            justify-content: center;
+            min-height: calc(100vh - 80px);
+        }
+    </style>
+</head>
+<body>
+    <!-- 液态光晕背景 -->
+    <div class="liquid-orb orb-1"></div>
+    <div class="liquid-orb orb-2"></div>
+    <div class="liquid-orb orb-3"></div>
+
+    <!-- 首页 -->
+    <div id="page-home" class="page active">
+        <header class="glass-card border-b border-white/10" style="position: relative; z-index: 10;">
+            <div style="max-width: 1200px; margin: 0 auto; padding: 16px 24px; display: flex; align-items: center; justify-content: space-between;">
+                <div style="display: flex; align-items: center; gap: 12px;">
+                    <div style="width: 40px; height: 40px; border-radius: 12px; background: linear-gradient(135deg, #7c3aed, #c026d3); display: flex; align-items: center; justify-content: center; box-shadow: 0 10px 30px rgba(124, 58, 237, 0.3);">
+                        <svg width="24" height="24" fill="none" stroke="white" viewBox="0 0 24 24">
+                            <rect x="3" y="3" width="18" height="18" rx="2" stroke-width="2"/>
+                            <circle cx="8.5" cy="8.5" r="1.5" fill="white"/>
+                            <polyline points="21 15 16 10 5 21" stroke-width="2"/>
+                        </svg>
+                    </div>
+                    <span style="font-size: 20px; font-weight: 600;">ClearWorld</span>
+                </div>
+                <nav style="display: flex; align-items: center; gap: 24px;">
+                    <a href="#" class="nav-link" onclick="showPage('help')">帮助中心</a>
+                    <a href="#" class="nav-link" onclick="showPage('profile')">用户中心</a>
+                    <a href="#" class="nav-link" onclick="showPage('vip')">会员中心</a>
+                    <a href="#" class="nav-link" onclick="showPage('login')">登录</a>
+                    <button onclick="showPage('register')" class="btn-gradient" style="padding: 8px 20px; border-radius: 12px; font-weight: 600;">注册</button>
+                </nav>
+            </div>
+        </header>
+
+        <main style="padding: 60px 24px; position: relative; z-index: 10;">
+            <div style="max-width: 800px; margin: 0 auto; text-align: center;">
+                <!-- 上传区域 -->
+                <div id="home-upload" class="upload-zone" style="border-radius: 24px; padding: 64px;" onclick="showPage('process')">
+                    <div style="display: flex; flex-direction: column; align-items: center; gap: 16px;">
+                        <div style="width: 80px; height: 80px; border-radius: 16px; background: linear-gradient(135deg, rgba(124,58,237,0.2), rgba(192,38,211,0.1)); display: flex; align-items: center; justify-content: center;">
+                            <svg width="40" height="40" stroke="#a855f7" fill="none" viewBox="0 0 24 24">
+                                <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M4 16l4.586-4.586a2 2 0 012.828 0L16 16m-2-2l1.586-1.586a2 2 0 012.828 0L20 14m-6-6h.01M6 20h12a2 2 0 002-2V6a2 2 0 00-2-2H6a2 2 0 00-2 2v12a2 2 0 002 2z" />
+                            </svg>
+                        </div>
+                        <div>
+                            <p style="font-size: 20px; font-weight: 500; margin-bottom: 8px;">点击或拖拽图片到此处</p>
+                            <p style="color: rgba(255,255,255,0.4);">支持 PNG, JPG, WEBP, BMP, GIF</p>
+                        </div>
+                    </div>
+                </div>
+
+                <!-- 功能卡片 -->
+                <div style="display: grid; grid-template-columns: repeat(3, 1fr); gap: 16px; margin-top: 32px;">
+                    <div class="feature-card" style="border-radius: 16px; padding: 24px; text-align: center;" onclick="showPage('process')">
+                        <div style="width: 48px; height: 48px; margin: 0 auto 12px; border-radius: 12px; background: linear-gradient(135deg, rgba(124,58,237,0.2), rgba(192,38,211,0.1)); display: flex; align-items: center; justify-content: center;">
+                            <svg width="24" height="24" stroke="#a855f7" fill="none" viewBox="0 0 24 24">
+                                <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M13 10V3L4 14h7v7l9-11h-7z" />
+                            </svg>
+                        </div>
+                        <h3 style="font-weight: 600;">2x 快速</h3>
+                        <p style="font-size: 14px; color: rgba(255,255,255,0.4); margin-top: 4px;">日常处理</p>
+                    </div>
+                    <div class="feature-card" style="border-radius: 16px; padding: 24px; text-align: center;" onclick="showPage('process')">
+                        <div style="width: 48px; height: 48px; margin: 0 auto 12px; border-radius: 12px; background: linear-gradient(135deg, rgba(124,58,237,0.2), rgba(192,38,211,0.1)); display: flex; align-items: center; justify-content: center;">
+                            <svg width="24" height="24" stroke="#a855f7" fill="none" viewBox="0 0 24 24">
+                                <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M4 16l4.586-4.586a2 2 0 012.828 0L16 16m-2-2l1.586-1.586a2 2 0 012.828 0L20 14m-6-6h.01M6 20h12a2 2 0 002-2V6a2 2 0 00-2-2H6a2 2 0 00-2 2v12a2 2 0 002 2z" />
+                            </svg>
+                        </div>
+                        <h3 style="font-weight: 600;">4x 高清</h3>
+                        <p style="font-size: 14px; color: rgba(255,255,255,0.4); margin-top: 4px;">专业画质</p>
+                    </div>
+                    <div class="feature-card" style="border-radius: 16px; padding: 24px; text-align: center;" onclick="showPage('vip')">
+                        <div style="width: 48px; height: 48px; margin: 0 auto 12px; border-radius: 12px; background: linear-gradient(135deg, rgba(124,58,237,0.2), rgba(192,38,211,0.1)); display: flex; align-items: center; justify-content: center;">
+                            <svg width="24" height="24" stroke="#a855f7" fill="none" viewBox="0 0 24 24">
+                                <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M5 3v4M3 5h4M6 17v4m-2-2h4m5-16l2.286 6.857L21 12l-5.714 2.143L13 21l-2.286-6.857L5 12l5.714-2.143L13 3z" />
+                            </svg>
+                        </div>
+                        <h3 style="font-weight: 600;">8x 会员</h3>
+                        <p style="font-size: 14px; color: rgba(255,255,255,0.4); margin-top: 4px;">高清无损</p>
+                    </div>
+                </div>
+
+                <!-- 会员引导 -->
+                <div class="glass-card" style="border-radius: 16px; padding: 16px; margin-top: 32px; display: flex; align-items: center; justify-content: space-between;">
+                    <div style="display: flex; align-items: center; gap: 12px;">
+                        <div style="width: 32px; height: 32px; border-radius: 50%; background: linear-gradient(135deg, #facc15, #eab308); display: flex; align-items: center; justify-content: center;">
+                            <svg width="16" height="16" fill="white" viewBox="0 0 24 24">
+                                <path d="M12 2l2.4 7.2h7.6l-6 4.8 2.4 7.2-6-4.8-6 4.8 2.4-7.2-6-4.8h7.6z"/>
+                            </svg>
+                        </div>
+                        <span style="color: rgba(255,255,255,0.8);">开通会员，享无限次处理 + 批量处理</span>
+                    </div>
+                    <button onclick="showPage('vip')" class="btn-gradient" style="padding: 8px 16px; border-radius: 12px; font-size: 14px; font-weight: 600;">
+                        了解会员
+                    </button>
+                </div>
+            </div>
+        </main>
+
+        <footer style="border-top: 1px solid rgba(255,255,255,0.1); padding: 24px; position: relative; z-index: 10;">
+            <div style="max-width: 1200px; margin: 0 auto; display: flex; align-items: center; justify-content: space-between; font-size: 14px; color: rgba(255,255,255,0.4);">
+                <p>&copy; 2024 ClearWorld 清晰世界</p>
+                <div style="display: flex; gap: 24px;">
+                    <a href="#" class="nav-link" onclick="showPage('help')">帮助中心</a>
+                    <a href="#" class="nav-link">联系方式</a>
+                </div>
+            </div>
+        </footer>
+    </div>
+
+    <!-- 处理页 -->
+    <div id="page-process" class="page">
+        <header class="glass-card border-b border-white/10" style="position: relative; z-index: 10;">
+            <div style="max-width: 1200px; margin: 0 auto; padding: 16px 24px; display: flex; align-items: center; justify-content: space-between;">
+                <div style="display: flex; align-items: center; gap: 12px; cursor: pointer;" onclick="showPage('home')">
+                    <div style="width: 40px; height: 40px; border-radius: 12px; background: linear-gradient(135deg, #7c3aed, #c026d3); display: flex; align-items: center; justify-content: center; box-shadow: 0 10px 30px rgba(124, 58, 237, 0.3);">
+                        <svg width="24" height="24" fill="none" stroke="white" viewBox="0 0 24 24">
+                            <rect x="3" y="3" width="18" height="18" rx="2" stroke-width="2"/>
+                            <circle cx="8.5" cy="8.5" r="1.5" fill="white"/>
+                            <polyline points="21 15 16 10 5 21" stroke-width="2"/>
+                        </svg>
+                    </div>
+                    <span style="font-size: 20px; font-weight: 600;">ClearWorld</span>
+                </div>
+                <a href="#" class="nav-link" onclick="showPage('home')">返回首页</a>
+            </div>
+        </header>
+
+        <main style="padding: 32px 24px; position: relative; z-index: 10;">
+            <div style="max-width: 1200px; margin: 0 auto;">
+                <div style="display: grid; grid-template-columns: 2fr 1fr; gap: 24px;">
+                    <!-- 左侧预览 -->
+                    <div>
+                        <!-- 有图片时显示 -->
+                        <div id="preview-area" class="glass-card" style="border-radius: 16px; padding: 16px; display: none;">
+                            <div class="compare-container" id="compareContainer" style="display: none;">
+                                <img id="compare-before" class="compare-image compare-before" src="" alt="原图">
+                                <img id="compare-after" class="compare-image" src="" alt="高清图">
+                                <div class="compare-slider" id="compareSlider"></div>
+                            </div>
+                            <div id="image-preview" style="display: none; text-align: center;">
+                                <img id="preview-img" style="max-width: 100%; max-height: 500px; border-radius: 12px;" src="" alt="预览">
+                            </div>
+                            <div id="preview-buttons" style="display: none; justify-content: center; gap: 16px; margin-top: 16px;">
+                                <button onclick="downloadImage()" class="btn-gradient" style="padding: 12px 24px; border-radius: 12px; font-weight: 600;">
+                                    下载高清图
+                                </button>
+                                <button onclick="resetProcess()" style="padding: 12px 24px; border-radius: 12px; border: 1px solid rgba(255,255,255,0.2); color: white; font-weight: 600; background: transparent;">
+                                    处理新图片
+                                </button>
+                            </div>
+                        </div>
+
+                        <!-- 上传区域 -->
+                        <div id="upload-area" class="upload-zone" style="border-radius: 16px; padding: 48px; text-align: center; height: 400px; display: flex; align-items: center; justify-content: center;">
+                            <div>
+                                <input type="file" id="processFileInput" accept="image/*" onchange="handleProcessFile(this)">
+                                <div style="width: 64px; height: 64px; margin: 0 auto 16px; border-radius: 16px; background: rgba(124,58,237,0.2); display: flex; align-items: center; justify-content: center;" onclick="document.getElementById('processFileInput').click()">
+                                    <svg width="32" height="32" stroke="#a855f7" fill="none" viewBox="0 0 24 24">
+                                        <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M4 16l4.586-4.586a2 2 0 012.828 0L16 16m-2-2l1.586-1.586a2 2 0 012.828 0L20 14m-6-6h.01M6 20h12a2 2 0 002-2V6a2 2 0 00-2-2H6a2 2 0 00-2 2v12a2 2 0 002 2z" />
+                                    </svg>
+                                </div>
+                                <p style="font-size: 18px; font-weight: 500; margin-bottom: 8px;">点击或拖拽图片到此处</p>
+                                <p style="color: rgba(255,255,255,0.4);">支持 PNG, JPG, WEBP, BMP, GIF</p>
+                            </div>
+                        </div>
+                    </div>
+
+                    <!-- 右侧设置 -->
+                    <div class="glass-card" style="border-radius: 16px; padding: 24px;">
+                        <h2 style="font-size: 18px; font-weight: 600; margin-bottom: 24px;">处理设置</h2>
+
+                        <!-- 放大倍数 -->
+                        <div style="margin-bottom: 24px;">
+                            <label style="display: block; font-size: 14px; font-weight: 500; color: #d1d5db; margin-bottom: 12px;">放大倍数</label>
+                            <div class="option-group" style="grid-template-columns: repeat(3, 1fr);">
+                                <button class="option-btn selected" onclick="selectScale(2)" id="scale-2">
+                                    <div class="label">2x</div>
+                                    <div class="desc">免费</div>
+                                </button>
+                                <button class="option-btn" onclick="selectScale(4)" id="scale-4" style="position: relative;">
+                                    <div class="label">4x</div>
+                                    <div class="desc">高清画质</div>
+                                    <span style="position: absolute; top: 6px; right: 6px; padding: 2px 6px; background: linear-gradient(135deg, #facc15, #eab308); color: #000; font-size: 10px; border-radius: 4px; font-weight: 600;">VIP</span>
+                                </button>
+                                <button class="option-btn" onclick="selectScale(8)" id="scale-8" style="position: relative;">
+                                    <div class="label">8x</div>
+                                    <div class="desc">会员专享</div>
+                                    <span style="position: absolute; top: 6px; right: 6px; padding: 2px 6px; background: linear-gradient(135deg, #facc15, #eab308); color: #000; font-size: 10px; border-radius: 4px; font-weight: 600;">VIP</span>
+                                </button>
+                            </div>
+                        </div>
+
+                        <!-- AI 模型 -->
+                        <div style="margin-bottom: 24px;">
+                            <label style="display: block; font-size: 14px; font-weight: 500; color: #d1d5db; margin-bottom: 12px;">AI 模型</label>
+                            <select id="model-select" class="input-dark" style="width: 100%; padding: 12px 16px; border-radius: 12px;" onchange="settings.model = this.value">
+                                <option value="standard">通用标准</option>
+                                <option value="anime">动漫插画</option>
+                                <option value="photo">照片人像</option>
+                            </select>
+                        </div>
+
+                        <!-- 降噪程度 -->
+                        <div style="margin-bottom: 24px;">
+                            <label style="display: block; font-size: 14px; font-weight: 500; color: #d1d5db; margin-bottom: 12px;">降噪程度</label>
+                            <div class="btn-group">
+                                <button class="btn-small selected" onclick="selectDenoise(0)" id="denoise-0">无</button>
+                                <button class="btn-small" onclick="selectDenoise(1)" id="denoise-1">低</button>
+                                <button class="btn-small" onclick="selectDenoise(2)" id="denoise-2">中</button>
+                                <button class="btn-small" onclick="selectDenoise(3)" id="denoise-3">高</button>
+                            </div>
+                        </div>
+
+                        <!-- 输出格式 -->
+                        <div style="margin-bottom: 32px;">
+                            <label style="display: block; font-size: 14px; font-weight: 500; color: #d1d5db; margin-bottom: 12px;">输出格式</label>
+                            <div class="format-group">
+                                <button class="format-btn selected" onclick="selectFormat('png')" id="format-png">png</button>
+                                <button class="format-btn" onclick="selectFormat('jpg')" id="format-jpg">jpg</button>
+                                <button class="format-btn" onclick="selectFormat('webp')" id="format-webp">webp</button>
+                            </div>
+                        </div>
+
+                        <!-- 处理按钮 -->
+                        <button id="processBtn" onclick="processImage()" class="btn-gradient" style="width: 100%; padding: 16px; border-radius: 12px; font-weight: 600; opacity: 0.5; cursor: not-allowed;" disabled>
+                            开始处理
+                        </button>
+
+                        <!-- 进度条 -->
+                        <div id="progress-area" style="display: none; margin-top: 16px;">
+                            <div class="progress-bar">
+                                <div id="progress-fill" class="progress-fill" style="width: 0%;"></div>
+                            </div>
+                            <p id="progress-text" style="text-align: center; font-size: 14px; color: rgba(255,255,255,0.6); margin-top: 8px;">0%</p>
+                        </div>
+                    </div>
+                </div>
+            </div>
+        </main>
+    </div>
+
+    <!-- 登录页 -->
+    <div id="page-login" class="page">
+        <div style="display: flex; align-items: center; justify-content: center; min-height: 100vh; padding: 24px;">
+            <div class="glass-card" style="border-radius: 24px; padding: 40px; width: 100%; max-width: 420px; position: relative; z-index: 10;">
+                <div style="text-align: center; margin-bottom: 32px;">
+                    <div onclick="showPage('home')" style="width: 56px; height: 56px; margin: 0 auto 16px; border-radius: 16px; background: linear-gradient(135deg, #7c3aed, #c026d3); display: flex; align-items: center; justify-content: center; box-shadow: 0 10px 30px rgba(124, 58, 237, 0.3); cursor: pointer;">
+                        <svg width="28" height="28" fill="none" stroke="white" viewBox="0 0 24 24">
+                            <rect x="3" y="3" width="18" height="18" rx="2" stroke-width="2"/>
+                            <circle cx="8.5" cy="8.5" r="1.5" fill="white"/>
+                            <polyline points="21 15 16 10 5 21" stroke-width="2"/>
+                        </svg>
+                    </div>
+                    <h1 style="font-size: 24px; font-weight: 600;">欢迎回来</h1>
+                    <p style="color: #9ca3af; margin-top: 8px;">进入你的专属空间</p>
+                </div>
+
+                <form onsubmit="handleLogin(event)">
+                    <div style="margin-bottom: 20px;">
+                        <label style="display: block; font-size: 14px; font-weight: 500; color: #d1d5db; margin-bottom: 8px;">邮箱地址</label>
+                        <input type="email" id="login-email" class="input-dark" style="width: 100%; padding: 16px 20px; border-radius: 12px;" placeholder="your@email.com" required>
+                    </div>
+
+                    <div style="margin-bottom: 20px;">
+                        <label style="display: block; font-size: 14px; font-weight: 500; color: #d1d5db; margin-bottom: 8px;">密码</label>
+                        <div style="position: relative;">
+                            <input type="password" id="login-password" class="input-dark" style="width: 100%; padding: 16px 20px; border-radius: 12px; padding-right: 56px;" placeholder="••••••••" required>
+                            <button type="button" onclick="togglePassword('login-password')" style="position: absolute; right: 16px; top: 50%; transform: translateY(-50%); background: none; border: none; color: #6b7280; cursor: pointer;">
+                                <svg width="20" height="20" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+                                    <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M15 12a3 3 0 11-6 0 3 3 0 016 0z"/>
+                                    <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M2.458 12C3.732 7.943 7.523 5 12 5c4.478 0 8.268 2.943 9.542 7-1.274 4.057-5.064 7-9.542 7-4.477 0-8.268-2.943-9.542-7z"/>
+                                </svg>
+                            </button>
+                        </div>
+                    </div>
+
+                    <div style="display: flex; align-items: center; justify-content: space-between; margin-bottom: 24px;">
+                        <label style="display: flex; align-items: center; gap: 8px; cursor: pointer;">
+                            <input type="checkbox" style="width: 16px; height: 16px; background: transparent; border: 1px solid #4b5563; border-radius: 4px;">
+                            <span style="font-size: 14px; color: #9ca3af;">记住我</span>
+                        </label>
+                        <a href="#" style="font-size: 14px; color: #a855f7;">忘记密码?</a>
+                    </div>
+
+                    <button type="submit" class="btn-gradient" style="width: 100%; padding: 16px; border-radius: 12px; font-weight: 600;">
+                        立即登录
+                    </button>
+                </form>
+
+                <div style="position: relative; margin: 24px 0;">
+                    <div style="position: absolute; left: 0; top: 50%; width: 100%; height: 1px; background: #374151;"></div>
+                    <div style="position: relative; text-align: center;">
+                        <span style="background: transparent; padding: 0 16px; color: #6b7280; font-size: 14px;">其他登录方式</span>
+                    </div>
+                </div>
+
+                <div style="display: grid; grid-template-columns: 1fr 1fr; gap: 16px;">
+                    <button style="display: flex; align-items: center; justify-content: center; gap: 12px; padding: 12px 16px; border-radius: 12px; border: 1px solid rgba(255,255,255,0.1); background: rgba(255,255,255,0.05); color: #d1d5db; cursor: pointer;">
+                        <svg width="20" height="20" viewBox="0 0 24 24">
+                            <path fill="#4285F4" d="M22.56 12.25c0-.78-.07-1.53-.2-2.25H12v4.26h5.92c-.26 1.37-1.04 2.53-2.21 3.31v2.77h3.57c2.08-1.92 3.28-4.74 3.28-8.09z"/>
+                            <path fill="#34A853" d="M12 23c2.97 0 5.46-.98 7.28-2.66l-3.57-2.77c-.98.66-2.23 1.06-3.71 1.06-2.86 0-5.29-1.93-6.16-4.53H2.18v2.84C3.99 20.53 7.7 23 12 23z"/>
+                            <path fill="#FBBC05" d="M5.84 14.09c-.22-.66-.35-1.36-.35-2.09s.13-1.43.35-2.09V7.07H2.18C1.43 8.55 1 10.22 1 12s.43 3.45 1.18 4.93l2.85-2.22.81-.62z"/>
+                            <path fill="#EA4335" d="M12 5.38c1.62 0 3.06.56 4.21 1.64l3.15-3.15C17.45 2.09 14.97 1 12 1 7.7 1 3.99 3.47 2.18 7.07l3.66 2.84c.87-2.6 3.3-4.53 6.16-4.53z"/>
+                        </svg>
+                        <span style="font-size: 14px; font-weight: 500;">Google</span>
+                    </button>
+                    <button style="display: flex; align-items: center; justify-content: center; gap: 12px; padding: 12px 16px; border-radius: 12px; border: 1px solid rgba(255,255,255,0.1); background: rgba(255,255,255,0.05); color: #d1d5db; cursor: pointer;">
+                        <svg width="20" height="20" fill="currentColor" viewBox="0 0 24 24">
+                            <path d="M12 0c-6.626 0-12 5.373-12 12 0 5.302 3.438 9.8 8.207 11.387.599.111.793-.261.793-.577v-2.234c-3.338.726-4.033-1.416-4.033-1.416-.546-1.387-1.333-1.756-1.333-1.756-1.089-.745.083-.729.083-.729 1.205.084 1.839 1.237 1.839 1.237 1.07 1.834 2.807 1.304 3.492.997.107-.775.418-1.305.762-1.604-2.665-.305-5.467-1.334-5.467-5.931 0-1.311.469-2.381 1.236-3.221-.124-.303-.535-1.524.117-3.176 0 0 1.008-.322 3.301 1.23.957-.266 1.983-.399 3.003-.404 1.02.005 2.047.138 3.006.404 2.291-1.552 3.297-1.23 3.297-1.23.653 1.653.242 2.874.118 3.176.77.84 1.235 1.911 1.235 3.221 0 4.609-2.807 5.624-5.479 5.921.43.372.823 1.102.823 2.222v3.293c0 .319.192.694.801.576 4.765-1.589 8.199-6.086 8.199-11.386 0-6.627-5.373-12-12-12z"/>
+                        </svg>
+                        <span style="font-size: 14px; font-weight: 500;">GitHub</span>
+                    </button>
+                </div>
+
+                <p style="text-align: center; margin-top: 24px; font-size: 14px; color: #6b7280;">
+                    还没有账户?
+                    <a href="#" onclick="showPage('register')" style="color: #a855f7; margin-left: 4px;">立即注册</a>
+                </p>
+            </div>
+        </div>
+    </div>
+
+    <!-- 注册页 -->
+    <div id="page-register" class="page">
+        <div style="display: flex; align-items: center; justify-content: center; min-height: 100vh; padding: 24px;">
+            <div class="glass-card" style="border-radius: 24px; padding: 40px; width: 100%; max-width: 420px; position: relative; z-index: 10;">
+                <div style="text-align: center; margin-bottom: 32px;">
+                    <div onclick="showPage('home')" style="width: 56px; height: 56px; margin: 0 auto 16px; border-radius: 16px; background: linear-gradient(135deg, #7c3aed, #c026d3); display: flex; align-items: center; justify-content: center; box-shadow: 0 10px 30px rgba(124, 58, 237, 0.3); cursor: pointer;">
+                        <svg width="28" height="28" fill="none" stroke="white" viewBox="0 0 24 24">
+                            <rect x="3" y="3" width="18" height="18" rx="2" stroke-width="2"/>
+                            <circle cx="8.5" cy="8.5" r="1.5" fill="white"/>
+                            <polyline points="21 15 16 10 5 21" stroke-width="2"/>
+                        </svg>
+                    </div>
+                    <h1 style="font-size: 24px; font-weight: 600;">创建账户</h1>
+                    <p style="color: #9ca3af; margin-top: 8px;">开启你的高清图片之旅</p>
+                </div>
+
+                <form onsubmit="handleRegister(event)">
+                    <div style="margin-bottom: 20px;">
+                        <label style="display: block; font-size: 14px; font-weight: 500; color: #d1d5db; margin-bottom: 8px;">邮箱地址</label>
+                        <input type="email" id="reg-email" class="input-dark" style="width: 100%; padding: 16px 20px; border-radius: 12px;" placeholder="your@email.com" required>
+                    </div>
+
+                    <div style="margin-bottom: 20px;">
+                        <label style="display: block; font-size: 14px; font-weight: 500; color: #d1d5db; margin-bottom: 8px;">密码</label>
+                        <input type="password" id="reg-password" class="input-dark" style="width: 100%; padding: 16px 20px; border-radius: 12px;" placeholder="••••••••" required minlength="6">
+                    </div>
+
+                    <div style="margin-bottom: 20px;">
+                        <label style="display: block; font-size: 14px; font-weight: 500; color: #d1d5db; margin-bottom: 8px;">确认密码</label>
+                        <input type="password" id="reg-confirm" class="input-dark" style="width: 100%; padding: 16px 20px; border-radius: 12px;" placeholder="••••••••" required>
+                    </div>
+
+                    <div style="display: flex; align-items: flex-start; gap: 8px; margin-bottom: 24px;">
+                        <input type="checkbox" id="reg-agree" style="width: 16px; height: 16px; margin-top: 2px; background: transparent; border: 1px solid #4b5563; border-radius: 4px;" required>
+                        <label for="reg-agree" style="font-size: 14px; color: #9ca3af;">
+                            我已阅读并同意
+                            <a href="#" style="color: #a855f7;">服务条款</a>
+                            和
+                            <a href="#" style="color: #a855f7;">隐私政策</a>
+                        </label>
+                    </div>
+
+                    <button type="submit" id="reg-submit" class="btn-gradient" style="width: 100%; padding: 16px; border-radius: 12px; font-weight: 600; opacity: 0.5; cursor: not-allowed;" disabled>
+                        立即注册
+                    </button>
+                </form>
+
+                <div style="position: relative; margin: 24px 0;">
+                    <div style="position: absolute; left: 0; top: 50%; width: 100%; height: 1px; background: #374151;"></div>
+                    <div style="position: relative; text-align: center;">
+                        <span style="background: transparent; padding: 0 16px; color: #6b7280; font-size: 14px;">其他注册方式</span>
+                    </div>
+                </div>
+
+                <div style="display: grid; grid-template-columns: 1fr 1fr; gap: 16px;">
+                    <button style="display: flex; align-items: center; justify-content: center; gap: 12px; padding: 12px 16px; border-radius: 12px; border: 1px solid rgba(255,255,255,0.1); background: rgba(255,255,255,0.05); color: #d1d5db; cursor: pointer;">
+                        <svg width="20" height="20" viewBox="0 0 24 24">
+                            <path fill="#4285F4" d="M22.56 12.25c0-.78-.07-1.53-.2-2.25H12v4.26h5.92c-.26 1.37-1.04 2.53-2.21 3.31v2.77h3.57c2.08-1.92 3.28-4.74 3.28-8.09z"/>
+                            <path fill="#34A853" d="M12 23c2.97 0 5.46-.98 7.28-2.66l-3.57-2.77c-.98.66-2.23 1.06-3.71 1.06-2.86 0-5.29-1.93-6.16-4.53H2.18v2.84C3.99 20.53 7.7 23 12 23z"/>
+                            <path fill="#FBBC05" d="M5.84 14.09c-.22-.66-.35-1.36-.35-2.09s.13-1.43.35-2.09V7.07H2.18C1.43 8.55 1 10.22 1 12s.43 3.45 1.18 4.93l2.85-2.22.81-.62z"/>
+                            <path fill="#EA4335" d="M12 5.38c1.62 0 3.06.56 4.21 1.64l3.15-3.15C17.45 2.09 14.97 1 12 1 7.7 1 3.99 3.47 2.18 7.07l3.66 2.84c.87-2.6 3.3-4.53 6.16-4.53z"/>
+                        </svg>
+                        <span style="font-size: 14px; font-weight: 500;">Google</span>
+                    </button>
+                    <button style="display: flex; align-items: center; justify-content: center; gap: 12px; padding: 12px 16px; border-radius: 12px; border: 1px solid rgba(255,255,255,0.1); background: rgba(255,255,255,0.05); color: #d1d5db; cursor: pointer;">
+                        <svg width="20" height="20" fill="currentColor" viewBox="0 0 24 24">
+                            <path d="M12 0c-6.626 0-12 5.373-12 12 0 5.302 3.438 9.8 8.207 11.387.599.111.793-.261.793-.577v-2.234c-3.338.726-4.033-1.416-4.033-1.416-.546-1.387-1.333-1.756-1.333-1.756-1.089-.745.083-.729.083-.729 1.205.084 1.839 1.237 1.839 1.237 1.07 1.834 2.807 1.304 3.492.997.107-.775.418-1.305.762-1.604-2.665-.305-5.467-1.334-5.467-5.931 0-1.311.469-2.381 1.236-3.221-.124-.303-.535-1.524.117-3.176 0 0 1.008-.322 3.301 1.23.957-.266 1.983-.399 3.003-.404 1.02.005 2.047.138 3.006.404 2.291-1.552 3.297-1.23 3.297-1.23.653 1.653.242 2.874.118 3.176.77.84 1.235 1.911 1.235 3.221 0 4.609-2.807 5.624-5.479 5.921.43.372.823 1.102.823 2.222v3.293c0 .319.192.694.801.576 4.765-1.589 8.199-6.086 8.199-11.386 0-6.627-5.373-12-12-12z"/>
+                        </svg>
+                        <span style="font-size: 14px; font-weight: 500;">GitHub</span>
+                    </button>
+                </div>
+
+                <p style="text-align: center; margin-top: 24px; font-size: 14px; color: #6b7280;">
+                    已有账户?
+                    <a href="#" onclick="showPage('login')" style="color: #a855f7; margin-left: 4px;">立即登录</a>
+                </p>
+            </div>
+        </div>
+    </div>
+
+    <!-- 帮助中心 -->
+    <div id="page-help" class="page">
+        <header class="glass-card border-b border-white/10" style="position: relative; z-index: 10;">
+            <div style="max-width: 1200px; margin: 0 auto; padding: 16px 24px; display: flex; align-items: center; justify-content: space-between;">
+                <div style="display: flex; align-items: center; gap: 12px; cursor: pointer;" onclick="showPage('home')">
+                    <div style="width: 40px; height: 40px; border-radius: 12px; background: linear-gradient(135deg, #7c3aed, #c026d3); display: flex; align-items: center; justify-content: center; box-shadow: 0 10px 30px rgba(124, 58, 237, 0.3);">
+                        <svg width="24" height="24" fill="none" stroke="white" viewBox="0 0 24 24">
+                            <rect x="3" y="3" width="18" height="18" rx="2" stroke-width="2"/>
+                            <circle cx="8.5" cy="8.5" r="1.5" fill="white"/>
+                            <polyline points="21 15 16 10 5 21" stroke-width="2"/>
+                        </svg>
+                    </div>
+                    <span style="font-size: 20px; font-weight: 600;">ClearWorld</span>
+                </div>
+                <a href="#" class="nav-link" onclick="showPage('home')">返回首页</a>
+            </div>
+        </header>
+
+        <main style="padding: 48px 24px; position: relative; z-index: 10;">
+            <div style="max-width: 800px; margin: 0 auto;">
+                <h1 style="font-size: 32px; font-weight: 600; text-align: center; margin-bottom: 16px;">帮助中心</h1>
+                <p style="color: #9ca3af; text-align: center; margin-bottom: 48px;">常见问题解答</p>
+
+                <div id="faq-list" style="display: flex; flex-direction: column; gap: 16px;">
+                    <!-- FAQ 将通过 JS 渲染 -->
+                </div>
+
+                <div class="glass-card" style="border-radius: 16px; padding: 32px; text-align: center; margin-top: 48px;">
+                    <h2 style="font-size: 20px; font-weight: 600; margin-bottom: 16px; color: white;">没有找到答案？</h2>
+                    <p style="color: #9ca3af; margin-bottom: 24px;">联系我们的客服团队，获取更多帮助</p>
+                    <div style="display: flex; justify-content: center; gap: 16px;">
+                        <button class="btn-gradient" style="padding: 12px 24px; border-radius: 12px; font-weight: 600;">联系客服</button>
+                        <button onclick="showPage('home')" style="padding: 12px 24px; border-radius: 12px; border: 1px solid rgba(255,255,255,0.2); color: white; font-weight: 600; background: transparent;">回到首页</button>
+                    </div>
+                </div>
+            </div>
+        </main>
+    </div>
+
+    <!-- 用户中心 -->
+    <div id="page-profile" class="page">
+        <header class="glass-card border-b border-white/10" style="position: relative; z-index: 10;">
+            <div style="max-width: 1200px; margin: 0 auto; padding: 16px 24px; display: flex; align-items: center; justify-content: space-between;">
+                <div style="display: flex; align-items: center; gap: 12px; cursor: pointer;" onclick="showPage('home')">
+                    <div style="width: 40px; height: 40px; border-radius: 12px; background: linear-gradient(135deg, #7c3aed, #c026d3); display: flex; align-items: center; justify-content: center; box-shadow: 0 10px 30px rgba(124, 58, 237, 0.3);">
+                        <svg width="24" height="24" fill="none" stroke="white" viewBox="0 0 24 24">
+                            <rect x="3" y="3" width="18" height="18" rx="2" stroke-width="2"/>
+                            <circle cx="8.5" cy="8.5" r="1.5" fill="white"/>
+                            <polyline points="21 15 16 10 5 21" stroke-width="2"/>
+                        </svg>
+                    </div>
+                    <span style="font-size: 20px; font-weight: 600;">ClearWorld</span>
+                </div>
+                <a href="#" class="nav-link" onclick="showPage('home')">返回首页</a>
+            </div>
+        </header>
+
+        <main style="padding: 32px 24px; position: relative; z-index: 10;">
+            <div style="max-width: 900px; margin: 0 auto;">
+                <!-- 用户信息 -->
+                <div class="glass-card" style="border-radius: 16px; padding: 24px; margin-bottom: 24px;">
+                    <div style="display: flex; align-items: center; gap: 24px;">
+                        <div style="width: 80px; height: 80px; border-radius: 50%; background: linear-gradient(135deg, #7c3aed, #c026d3); display: flex; align-items: center; justify-content: center; font-size: 32px; font-weight: bold;">
+                            U
+                        </div>
+                        <div style="flex: 1;">
+                            <h1 style="font-size: 20px; font-weight: 600; color: white;">用户</h1>
+                            <p style="color: #9ca3af;">user@example.com</p>
+                            <div style="display: flex; align-items: center; gap: 16px; margin-top: 8px;">
+                                <span style="padding: 4px 12px; background: rgba(234,179,8,0.2); color: #eab308; border-radius: 999px; font-size: 14px;">
+                                    免费用户
+                                </span>
+                                <span style="color: #6b7280; font-size: 14px;">剩余次数：1/天</span>
+                            </div>
+                        </div>
+                        <button onclick="showPage('vip')" class="btn-gradient" style="padding: 12px 24px; border-radius: 12px; font-weight: 600;">
+                            开通会员
+                        </button>
+                    </div>
+                </div>
+
+                <!-- 标签页 -->
+                <div style="display: flex; gap: 8px; margin-bottom: 24px;">
+                    <button onclick="switchTab('history')" id="tab-history" class="tab-btn active">处理记录</button>
+                    <button onclick="switchTab('settings')" id="tab-settings" class="tab-btn">账号设置</button>
+                    <button onclick="switchTab('vip')" id="tab-vip" class="tab-btn">会员中心</button>
+                </div>
+
+                <!-- 处理记录 -->
+                <div id="tab-content-history" class="glass-card" style="border-radius: 16px; padding: 24px;">
+                    <h2 style="font-size: 18px; font-weight: 600; margin-bottom: 16px;">处理记录</h2>
+                    <div id="history-list" style="display: flex; flex-direction: column; gap: 12px;">
+                        <!-- 历史记录将通过 JS 渲染 -->
+                    </div>
+                </div>
+
+                <!-- 账号设置 -->
+                <div id="tab-content-settings" class="glass-card" style="border-radius: 16px; padding: 24px; display: none;">
+                    <h2 style="font-size: 18px; font-weight: 600; margin-bottom: 16px;">账号设置</h2>
+                    <div style="max-width: 400px;">
+                        <div style="margin-bottom: 16px;">
+                            <label style="display: block; font-size: 14px; font-weight: 500; color: #d1d5db; margin-bottom: 8px;">邮箱地址</label>
+                            <input type="email" value="user@example.com" class="input-dark" style="width: 100%; padding: 12px 16px; border-radius: 12px;" disabled>
+                        </div>
+                        <div style="margin-bottom: 16px;">
+                            <label style="display: block; font-size: 14px; font-weight: 500; color: #d1d5db; margin-bottom: 8px;">新密码</label>
+                            <input type="password" placeholder="请输入新密码" class="input-dark" style="width: 100%; padding: 12px 16px; border-radius: 12px;">
+                        </div>
+                        <button class="btn-gradient" style="padding: 12px 24px; border-radius: 12px; font-weight: 600;">保存修改</button>
+                    </div>
+                </div>
+
+                <!-- 会员中心 -->
+                <div id="tab-content-vip" class="glass-card" style="border-radius: 16px; padding: 24px; display: none;">
+                    <h2 style="font-size: 18px; font-weight: 600; margin-bottom: 16px;">会员中心</h2>
+                    <div style="text-align: center; padding: 32px;">
+                        <div style="width: 64px; height: 64px; margin: 0 auto 16px; border-radius: 50%; background: rgba(234,179,8,0.2); display: flex; align-items: center; justify-content: center;">
+                            <svg width="32" height="32" fill="#eab308" viewBox="0 0 24 24">
+                                <path d="M12 2l2.4 7.2h7.6l-6 4.8 2.4 7.2-6-4.8-6 4.8 2.4-7.2-6-4.8h7.6z"/>
+                            </svg>
+                        </div>
+                        <p style="color: #9ca3af; margin-bottom: 24px;">开通会员，享无限次处理 + 批量处理</p>
+                        <button onclick="showPage('vip')" class="btn-gradient" style="padding: 12px 32px; border-radius: 12px; font-weight: 600; display: inline-block;">立即开通</button>
+                    </div>
+                </div>
+            </div>
+        </main>
+    </div>
+
+    <!-- 会员中心 -->
+    <div id="page-vip" class="page">
+        <header class="glass-card border-b border-white/10" style="position: relative; z-index: 10;">
+            <div style="max-width: 1200px; margin: 0 auto; padding: 16px 24px; display: flex; align-items: center; justify-content: space-between;">
+                <div style="display: flex; align-items: center; gap: 12px; cursor: pointer;" onclick="showPage('home')">
+                    <div style="width: 40px; height: 40px; border-radius: 12px; background: linear-gradient(135deg, #7c3aed, #c026d3); display: flex; align-items: center; justify-content: center; box-shadow: 0 10px 30px rgba(124, 58, 237, 0.3);">
+                        <svg width="24" height="24" fill="none" stroke="white" viewBox="0 0 24 24">
+                            <rect x="3" y="3" width="18" height="18" rx="2" stroke-width="2"/>
+                            <circle cx="8.5" cy="8.5" r="1.5" fill="white"/>
+                            <polyline points="21 15 16 10 5 21" stroke-width="2"/>
+                        </svg>
+                    </div>
+                    <span style="font-size: 20px; font-weight: 600;">ClearWorld</span>
+                </div>
+                <a href="#" class="nav-link" onclick="showPage('home')">返回首页</a>
+            </div>
+        </header>
+
+        <main style="padding: 48px 24px; position: relative; z-index: 10;">
+            <div style="max-width: 1000px; margin: 0 auto;">
+                <h1 style="font-size: 40px; font-weight: 600; text-align: center; margin-bottom: 16px;">升级会员</h1>
+                <p style="color: #9ca3af; text-align: center; margin-bottom: 48px;">解锁全部高级功能，让图片更清晰</p>
+
+                <!-- 会员卡片 -->
+                <div style="display: grid; grid-template-columns: repeat(3, 1fr); gap: 24px; margin-bottom: 48px;">
+                    <!-- 季度卡 -->
+                    <div class="glass-card vip-card" style="border-radius: 16px; padding: 24px; position: relative; transition: all 0.3s;">
+                        <div style="text-align: center; margin-bottom: 24px;">
+                            <h3 style="font-size: 20px; font-weight: 600; margin-bottom: 8px;">季度卡</h3>
+                            <div style="display: flex; align-items: baseline; justify-content: center; gap: 4px;">
+                                <span style="font-size: 40px; font-weight: bold;">¥19.9</span>
+                                <span style="color: #9ca3af;">/季度</span>
+                            </div>
+                        </div>
+                        <ul style="margin-bottom: 24px; display: flex; flex-direction: column; gap: 12px;">
+                            <li style="display: flex; align-items: center; gap: 8px; color: #d1d5db;">
+                                <svg width="20" height="20" stroke="#4ade80" fill="none" viewBox="0 0 24 24">
+                                    <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M5 13l4 4L19 7" />
+                                </svg>
+                                无限次处理
+                            </li>
+                            <li style="display: flex; align-items: center; gap: 8px; color: #d1d5db;">
+                                <svg width="20" height="20" stroke="#4ade80" fill="none" viewBox="0 0 24 24">
+                                    <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M5 13l4 4L19 7" />
+                                </svg>
+                                4x 放大
+                            </li>
+                            <li style="display: flex; align-items: center; gap: 8px; color: #d1d5db;">
+                                <svg width="20" height="20" stroke="#4ade80" fill="none" viewBox="0 0 24 24">
+                                    <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M5 13l4 4L19 7" />
+                                </svg>
+                                批量处理
+                            </li>
+                            <li style="display: flex; align-items: center; gap: 8px; color: #d1d5db;">
+                                <svg width="20" height="20" stroke="#4ade80" fill="none" viewBox="0 0 24 24">
+                                    <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M5 13l4 4L19 7" />
+                                </svg>
+                                去除水印
+                            </li>
+                        </ul>
+                        <button onclick="selectVipPlan(0)" class="vip-plan-btn" style="width: 100%; padding: 12px; border-radius: 12px; border: 1px solid #a855f7; background: transparent; color: #a855f7; font-weight: 600; cursor: pointer; transition: all 0.3s;">
+                            立即订阅
+                        </button>
+                    </div>
+
+                    <!-- 年卡 -->
+                    <div id="vip-card-year" class="glass-card vip-card" style="border-radius: 16px; padding: 24px; position: relative; border-color: #a855f7; transform: scale(1.05);">
+                        <div style="position: absolute; top: -12px; left: 50%; transform: translateX(-50%);">
+                            <span style="padding: 4px 16px; background: linear-gradient(135deg, #7c3aed, #c026d3); color: white; font-size: 12px; border-radius: 999px; animation: pulse 2s infinite;">超值优惠</span>
+                        </div>
+                        <div style="text-align: center; margin-bottom: 24px;">
+                            <h3 style="font-size: 20px; font-weight: 600; margin-bottom: 8px;">年卡</h3>
+                            <div style="display: flex; align-items: baseline; justify-content: center; gap: 4px;">
+                                <span style="font-size: 40px; font-weight: bold;">¥49</span>
+                                <span style="color: #9ca3af;">/年</span>
+                            </div>
+                            <div style="margin-top: 8px; padding: 4px 12px; background: rgba(34, 197, 94, 0.2); color: #22c55e; border-radius: 999px; font-size: 12px; display: inline-block;">省 ¥110</div>
+                        </div>
+                        <ul style="margin-bottom: 24px; display: flex; flex-direction: column; gap: 12px;">
+                            <li style="display: flex; align-items: center; gap: 8px; color: #d1d5db;">
+                                <svg width="20" height="20" stroke="#4ade80" fill="none" viewBox="0 0 24 24">
+                                    <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M5 13l4 4L19 7" />
+                                </svg>
+                                无限次处理
+                            </li>
+                            <li style="display: flex; align-items: center; gap: 8px; color: #d1d5db;">
+                                <svg width="20" height="20" stroke="#4ade80" fill="none" viewBox="0 0 24 24">
+                                    <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M5 13l4 4L19 7" />
+                                </svg>
+                                8x/16x 放大
+                            </li>
+                            <li style="display: flex; align-items: center; gap: 8px; color: #d1d5db;">
+                                <svg width="20" height="20" stroke="#4ade80" fill="none" viewBox="0 0 24 24">
+                                    <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M5 13l4 4L19 7" />
+                                </svg>
+                                批量处理
+                            </li>
+                            <li style="display: flex; align-items: center; gap: 8px; color: #d1d5db;">
+                                <svg width="20" height="20" stroke="#4ade80" fill="none" viewBox="0 0 24 24">
+                                    <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M5 13l4 4L19 7" />
+                                </svg>
+                                去除水印
+                            </li>
+                            <li style="display: flex; align-items: center; gap: 8px; color: #d1d5db;">
+                                <svg width="20" height="20" stroke="#4ade80" fill="none" viewBox="0 0 24 24">
+                                    <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M5 13l4 4L19 7" />
+                                </svg>
+                                优先队列
+                            </li>
+                        </ul>
+                        <button onclick="selectVipPlan(1)" class="vip-plan-btn" style="width: 100%; padding: 12px; border-radius: 12px; background: linear-gradient(135deg, #7c3aed, #c026d3); color: white; font-weight: 600; cursor: pointer; transition: all 0.3s; box-shadow: 0 4px 20px rgba(124, 58, 237, 0.4);">
+                            立即订阅
+                        </button>
+                    </div>
+
+                    <!-- 终身 -->
+                    <div class="glass-card vip-card" style="border-radius: 16px; padding: 24px; position: relative; transition: all 0.3s;">
+                        <div style="text-align: center; margin-bottom: 24px;">
+                            <h3 style="font-size: 20px; font-weight: 600; margin-bottom: 8px;">终身</h3>
+                            <div style="display: flex; align-items: baseline; justify-content: center; gap: 4px;">
+                                <span style="font-size: 40px; font-weight: bold;">¥99</span>
+                                <span style="color: #9ca3af;">一次性</span>
+                            </div>
+                            <div style="margin-top: 8px; padding: 4px 12px; background: rgba(234, 179, 8, 0.2); color: #eab308; border-radius: 999px; font-size: 12px; display: inline-block;">最划算</div>
+                        </div>
+                        <ul style="margin-bottom: 24px; display: flex; flex-direction: column; gap: 12px;">
+                            <li style="display: flex; align-items: center; gap: 8px; color: #d1d5db;">
+                                <svg width="20" height="20" stroke="#4ade80" fill="none" viewBox="0 0 24 24">
+                                    <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M5 13l4 4L19 7" />
+                                </svg>
+                                永久无限次
+                            </li>
+                            <li style="display: flex; align-items: center; gap: 8px; color: #d1d5db;">
+                                <svg width="20" height="20" stroke="#4ade80" fill="none" viewBox="0 0 24 24">
+                                    <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M5 13l4 4L19 7" />
+                                </svg>
+                                8x/16x 放大
+                            </li>
+                            <li style="display: flex; align-items: center; gap: 8px; color: #d1d5db;">
+                                <svg width="20" height="20" stroke="#4ade80" fill="none" viewBox="0 0 24 24">
+                                    <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M5 13l4 4L19 7" />
+                                </svg>
+                                批量处理
+                            </li>
+                            <li style="display: flex; align-items: center; gap: 8px; color: #d1d5db;">
+                                <svg width="20" height="20" stroke="#4ade80" fill="none" viewBox="0 0 24 24">
+                                    <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M5 13l4 4L19 7" />
+                                </svg>
+                                去除水印
+                            </li>
+                            <li style="display: flex; align-items: center; gap: 8px; color: #d1d5db;">
+                                <svg width="20" height="20" stroke="#4ade80" fill="none" viewBox="0 0 24 24">
+                                    <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M5 13l4 4L19 7" />
+                                </svg>
+                                优先队列
+                            </li>
+                            <li style="display: flex; align-items: center; gap: 8px; color: #d1d5db;">
+                                <svg width="20" height="20" stroke="#4ade80" fill="none" viewBox="0 0 24 24">
+                                    <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M5 13l4 4L19 7" />
+                                </svg>
+                                专属客服
+                            </li>
+                        </ul>
+                        <button onclick="selectVipPlan(2)" class="vip-plan-btn" style="width: 100%; padding: 12px; border-radius: 12px; border: 1px solid #a855f7; background: transparent; color: #a855f7; font-weight: 600; cursor: pointer; transition: all 0.3s;">
+                            立即订阅
+                        </button>
+                    </div>
+                </div>
+
+                <!-- 支付弹窗 -->
+                <div id="payment-modal" class="glass-card" style="border-radius: 16px; padding: 24px; max-width: 400px; margin: 0 auto; display: none; position: relative;">
+                    <button onclick="closePaymentModal()" style="position: absolute; top: 16px; right: 16px; background: none; border: none; color: #9ca3af; cursor: pointer; padding: 4px;">
+                        <svg width="24" height="24" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+                            <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M6 18L18 6M6 6l12 12"/>
+                        </svg>
+                    </button>
+                    <h3 style="font-size: 18px; font-weight: 600; text-align: center; margin-bottom: 16px;">选择支付方式</h3>
+                    <p id="payment-plan" style="text-align: center; color: #9ca3af; margin-bottom: 24px;"></p>
+                    <div style="display: flex; flex-direction: column; gap: 12px;">
+                        <button onclick="handlePayment('微信支付')" style="width: 100%; padding: 16px; border-radius: 12px; background: #07C160; color: white; font-weight: 600; display: flex; align-items: center; justify-content: center; gap: 12px; border: none; cursor: pointer; transition: all 0.3s; transform: translateY(0);" onmouseover="this.style.transform='translateY(-2px)'" onmouseout="this.style.transform='translateY(0)'">
+                            <svg width="24" height="24" viewBox="0 0 24 24" fill="white">
+                                <path d="M8.691 2.188C3.891 2.188 0 5.476 0 9.53c0 2.212 1.17 4.203 3.002 5.55a.59.59 0 01.213.665l-.39 1.49c-.019.07-.048.141-.048.213 0 .163.13.295.29.295a.326.326 0 00.167-.054l1.903-1.114a.864.864 0 01.717-.098 10.16 10.16 0 002.837.403c.276 0 .543-.027.811-.05-.857-2.578.157-4.972 1.932-6.446 1.703-1.415 3.882-1.98 5.853-1.838-.576-3.583-4.196-6.348-8.596-6.348zM5.785 5.991c.642 0 1.162.529 1.162 1.18a1.17 1.17 0 01-1.162 1.178A1.17 1.17 0 014.623 7.17c0-.651.52-1.18 1.162-1.18zm5.813 0c.642 0 1.162.529 1.162 1.18a1.17 1.17 0 01-1.162 1.178 1.17 1.17 0 01-1.162-1.178c0-.651.52-1.18 1.162-1.18zm5.34 2.867c-1.797-.052-3.746.512-5.28 1.786-1.72 1.428-2.687 3.72-1.78 6.22.942 2.453 3.666 4.229 6.884 4.229.826 0 1.622-.12 2.361-.336a.722.722 0 01.598.082l1.584.926a.272.272 0 00.14.045c.134 0 .24-.111.24-.247 0-.06-.023-.12-.038-.177l-.327-1.233a.582.582 0 01-.023-.156.49.49 0 01.201-.398C23.024 18.48 24 16.82 24 14.98c0-3.21-2.931-5.837-6.656-6.088V8.89c-.135-.01-.269-.03-.406-.03zm-2.53 3.274c.535 0 .969.44.969.982a.976.976 0 01-.969.983.976.976 0 01-.969-.983c0-.542.434-.982.97-.982zm4.844 0c.535 0 .969.44.969.982a.976.976 0 01-.969.983.976.976 0 01-.969-.983c0-.542.434-.982.969-.982z"/>
+                            </svg>
+                            微信支付
+                        </button>
+                        <button onclick="handlePayment('支付宝')" style="width: 100%; padding: 16px; border-radius: 12px; background: #1677FF; color: white; font-weight: 600; display: flex; align-items: center; justify-content: center; gap: 12px; border: none; cursor: pointer; transition: all 0.3s; transform: translateY(0);" onmouseover="this.style.transform='translateY(-2px)'" onmouseout="this.style.transform='translateY(0)'">
+                            <svg width="24" height="24" viewBox="0 0 24 24" fill="white">
+                                <path d="M19.5 3h-15A1.5 1.5 0 003 4.5v15A1.5 1.5 0 004.5 21h15a1.5 1.5 0 001.5-1.5v-15A1.5 1.5 0 0019.5 3zM9 12.75a.75.75 0 01.75-.75h4.5a.75.75 0 010 1.5h-4.5a.75.75 0 01-.75-.75zM9 9.75a.75.75 0 01.75-.75h4.5a.75.75 0 010 1.5h-4.5A.75.75 0 019 9.75z"/>
+                            </svg>
+                            支付宝
+                        </button>
+                    </div>
+                    <p style="text-align: center; color: #6b7280; font-size: 14px; margin-top: 16px;">支付即表示您同意我们的服务条款</p>
+                </div>
+            </div>
+        </main>
+    </div>
+
+    <script>
+        // 全局状态
+        let currentPage = 'home';
+        let settings = { scale: 2, model: 'standard', denoise: 0, format: 'png' };
+        let originalImage = null;
+        let processedImage = null;
+        let isProcessing = false;
+
+        // 页面切换
+        function showPage(page) {
+            document.querySelectorAll('.page').forEach(p => p.classList.remove('active'));
+            document.getElementById('page-' + page).classList.add('active');
+            currentPage = page;
+
+            // 初始化页面内容
+            if (page === 'help') renderFaqs();
+            if (page === 'profile') renderHistory();
+        }
+
+        // FAQ 数据和渲染
+        const faqs = [
+            { q: '如何上传图片进行超分处理？', a: '点击首页中央的上传区域或拖拽图片到该区域。支持 PNG、JPG、WEBP、BMP、GIF 等常见图片格式。图片大小建议不超过 10MB。' },
+            { q: '免费版和会员版有什么区别？', a: '免费版每天可处理 1 张图片，放大倍数最高支持 4x。会员可享受无限次处理、8x/16x 超高倍数放大、批量处理、去除水印等高级功能。' },
+            { q: '支持哪些放大倍数？', a: '免费版支持 2x 和 4x 放大，会员版额外支持 8x 和 16x 放大。倍数越高，处理时间越长，但细节保留更丰富。' },
+            { q: '处理后的图片可以保存多久？', a: '处理后的图片可在 7 天内随时下载。建议及时保存到本地，我们服务器不会永久存储用户图片。' },
+            { q: '如何开通会员？', a: '点击首页的"了解会员"按钮或访问会员中心页面，选择适合您的套餐（月卡/年卡/终身），完成支付后即可开通。' },
+            { q: '支持批量处理吗？', a: '批量处理功能仅对会员开放。会员可一次性上传多张图片进行批量处理，大大提高工作效率。' },
+        ];
+
+        let openFaqIndex = null;
+
+        function renderFaqs() {
+            const list = document.getElementById('faq-list');
+            list.innerHTML = faqs.map((faq, i) => `
+                <div class="glass-card" style="border-radius: 12px; overflow: hidden;">
+                    <button onclick="toggleFaq(${i})" style="width: 100%; padding: 20px; display: flex; align-items: center; justify-content: space-between; text-align: left; background: transparent; border: none; color: white; font-weight: 500; cursor: pointer;">
+                        ${faq.q}
+                        <svg width="20" height="20" stroke="#a855f7" fill="none" viewBox="0 0 24 24" style="transform: rotate(${openFaqIndex === i ? '180' : '0'}deg); transition: transform 0.3s;">
+                            <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M19 9l-7 7-7-7" />
+                        </svg>
+                    </button>
+                    ${openFaqIndex === i ? `<div style="padding: 0 20px 20px; color: #9ca3af; line-height: 1.6;">${faq.a}</div>` : ''}
+                </div>
+            `).join('');
+        }
+
+        function toggleFaq(index) {
+            openFaqIndex = openFaqIndex === index ? null : index;
+            renderFaqs();
+        }
+
+        // 历史记录
+        const historyData = [
+            { id: 1, date: '2024-01-15 14:30', name: 'photo_001.jpg', scale: '4x', model: '照片人像', status: 'completed' },
+            { id: 2, date: '2024-01-14 10:15', name: 'landscape.png', scale: '2x', model: '通用标准', status: 'completed' },
+            { id: 3, date: '2024-01-13 16:45', name: 'anime_art.jpg', scale: '4x', model: '动漫插画', status: 'completed' },
+        ];
+
+        function renderHistory() {
+            const list = document.getElementById('history-list');
+            list.innerHTML = historyData.map(item => `
+                <div style="display: flex; align-items: center; justify-content: space-between; padding: 16px; background: rgba(255,255,255,0.05); border-radius: 12px;">
+                    <div style="display: flex; align-items: center; gap: 16px;">
+                        <div style="width: 48px; height: 48px; border-radius: 8px; background: rgba(124,58,237,0.2); display: flex; align-items: center; justify-content: center;">
+                            <svg width="24" height="24" stroke="#a855f7" fill="none" viewBox="0 0 24 24">
+                                <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M4 16l4.586-4.586a2 2 0 012.828 0L16 16m-2-2l1.586-1.586a2 2 0 012.828 0L20 14m-6-6h.01M6 20h12a2 2 0 002-2V6a2 2 0 00-2-2H6a2 2 0 00-2 2v12a2 2 0 002 2z" />
+                            </svg>
+                        </div>
+                        <div>
+                            <p style="color: white; font-weight: 500;">${item.name}</p>
+                            <p style="color: #6b7280; font-size: 14px;">${item.date}</p>
+                        </div>
+                    </div>
+                    <div style="display: flex; align-items: center; gap: 16px;">
+                        <span style="color: #9ca3af; font-size: 14px;">${item.scale} | ${item.model}</span>
+                        <span style="padding: 4px 12px; background: rgba(34,197,94,0.2); color: #22c55e; border-radius: 999px; font-size: 14px;">已完成</span>
+                        <button style="background: none; border: none; color: #a855f7; cursor: pointer;">
+                            <svg width="20" height="20" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+                                <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M4 16v1a3 3 0 003 3h10a3 3 0 003-3v-1m-4-4l-4 4m0 0l-4-4m4 4V4" />
+                            </svg>
+                        </button>
+                    </div>
+                </div>
+            `).join('');
+        }
+
+        // 标签页切换
+        function switchTab(tab) {
+            document.querySelectorAll('.tab-btn').forEach(btn => btn.classList.remove('active'));
+            document.getElementById('tab-' + tab).classList.add('active');
+
+            document.getElementById('tab-content-history').style.display = tab === 'history' ? 'block' : 'none';
+            document.getElementById('tab-content-settings').style.display = tab === 'settings' ? 'block' : 'none';
+            document.getElementById('tab-content-vip').style.display = tab === 'vip' ? 'block' : 'none';
+        }
+
+        // 处理页功能
+        function selectScale(val) {
+            // 8x 需要会员
+            if (val === 8) {
+                showToast('8x 放大是会员专属功能', 'error');
+                showPage('vip');
+                return;
+            }
+            // 4x 需要会员提示（但仍可选择）
+            if (val === 4) {
+                showToast('4x 放大建议开通会员体验更佳');
+            }
+            settings.scale = val;
+            document.querySelectorAll('.option-btn').forEach(btn => btn.classList.remove('selected'));
+            document.getElementById('scale-' + val).classList.add('selected');
+            // 播放点击音效动画
+            playClickAnimation(document.getElementById('scale-' + val));
+        }
+
+        function selectDenoise(val) {
+            settings.denoise = val;
+            document.querySelectorAll('.btn-small').forEach(btn => btn.classList.remove('selected'));
+            document.getElementById('denoise-' + val).classList.add('selected');
+            playClickAnimation(document.getElementById('denoise-' + val));
+        }
+
+        function selectFormat(val) {
+            settings.format = val;
+            document.querySelectorAll('.format-btn').forEach(btn => btn.classList.remove('selected'));
+            document.getElementById('format-' + val).classList.add('selected');
+            playClickAnimation(document.getElementById('format-' + val));
+        }
+
+        // 点击动画
+        function playClickAnimation(element) {
+            element.style.transform = 'scale(0.95)';
+            setTimeout(() => element.style.transform = '', 150);
+        }
+
+        function handleProcessFile(input) {
+            const file = input.files[0];
+            if (file) {
+                // 检查文件大小
+                if (file.size > 10 * 1024 * 1024) {
+                    showToast('图片大小不能超过 10MB', 'error');
+                    return;
+                }
+
+                const reader = new FileReader();
+                reader.onload = (e) => {
+                    originalImage = e.target.result;
+                    const img = document.getElementById('preview-img');
+                    img.src = originalImage;
+                    img.style.opacity = '0';
+
+                    document.getElementById('upload-area').style.display = 'none';
+                    document.getElementById('preview-area').style.display = 'block';
+
+                    // 淡入动画
+                    setTimeout(() => {
+                        document.getElementById('image-preview').style.display = 'block';
+                        img.onload = () => img.style.opacity = '1';
+                        if (img.complete) img.style.opacity = '1';
+                    }, 100);
+
+                    document.getElementById('preview-buttons').style.display = 'flex';
+                    document.getElementById('processBtn').disabled = false;
+                    document.getElementById('processBtn').style.opacity = '1';
+                    document.getElementById('processBtn').style.cursor = 'pointer';
+                    processedImage = null;
+
+                    showToast('图片上传成功');
+                };
+                reader.readAsDataURL(file);
+            }
+        }
+
+        function processImage() {
+            if (!originalImage || isProcessing) return;
+
+            isProcessing = true;
+            document.getElementById('progress-area').style.display = 'block';
+            document.getElementById('processBtn').disabled = true;
+            document.getElementById('processBtn').innerHTML = '<span style="display:inline-block;">处理中...</span>';
+
+            let progress = 0;
+            const progressInterval = setInterval(() => {
+                progress += Math.random() * 15 + 5;
+                if (progress > 90) progress = 90;
+                document.getElementById('progress-fill').style.width = progress + '%';
+                document.getElementById('progress-text').textContent = Math.floor(progress) + '%';
+            }, 400);
+
+            // 模拟处理
+            setTimeout(() => {
+                clearInterval(progressInterval);
+                progress = 100;
+                document.getElementById('progress-fill').style.width = '100%';
+                document.getElementById('progress-text').textContent = '100%';
+
+                // 暂时用原图代替处理后的图
+                processedImage = originalImage;
+
+                setTimeout(() => {
+                    document.getElementById('progress-area').style.display = 'none';
+                    document.getElementById('image-preview').style.display = 'none';
+
+                    // 显示对比
+                    const beforeImg = document.getElementById('compare-before');
+                    const afterImg = document.getElementById('compare-after');
+                    beforeImg.src = originalImage;
+                    afterImg.src = processedImage;
+                    beforeImg.style.opacity = '0';
+                    afterImg.style.opacity = '0';
+
+                    document.getElementById('compareContainer').style.display = 'block';
+
+                    // 淡入动画
+                    setTimeout(() => {
+                        beforeImg.style.transition = 'opacity 0.5s ease';
+                        afterImg.style.transition = 'opacity 0.5s ease';
+                        beforeImg.style.opacity = '1';
+                        afterImg.style.opacity = '1';
+                    }, 100);
+
+                    // 初始化滑块
+                    initCompareSlider();
+
+                    document.getElementById('processBtn').disabled = false;
+                    document.getElementById('processBtn').innerHTML = '开始处理';
+                    isProcessing = false;
+
+                    showToast('处理完成！图片已生成');
+                }, 500);
+            }, 3000);
+        }
+
+        function initCompareSlider() {
+            const slider = document.getElementById('compareSlider');
+            const container = document.getElementById('compareContainer');
+            const beforeImg = document.getElementById('compare-before');
+
+            // 重置滑块位置到50%
+            slider.style.left = '50%';
+            beforeImg.style.clipPath = 'inset(0 50% 0 0)';
+
+            let isDragging = false;
+
+            // 鼠标事件
+            slider.addEventListener('mousedown', () => isDragging = true);
+            document.addEventListener('mouseup', () => isDragging = false);
+            document.addEventListener('mousemove', (e) => {
+                if (!isDragging) return;
+                updateSlider(e.clientX);
+            });
+
+            // 触摸事件（移动端支持）
+            slider.addEventListener('touchstart', () => isDragging = true);
+            document.addEventListener('touchend', () => isDragging = false);
+            document.addEventListener('touchmove', (e) => {
+                if (!isDragging) return;
+                const touch = e.touches[0];
+                updateSlider(touch.clientX);
+            });
+
+            function updateSlider(clientX) {
+                const rect = container.getBoundingClientRect();
+                let x = clientX - rect.left;
+                x = Math.max(0, Math.min(x, rect.width));
+                const percent = (x / rect.width) * 100;
+                slider.style.left = percent + '%';
+                beforeImg.style.clipPath = `inset(0 ${100 - percent}% 0 0)`;
+            }
+
+            // 点击容器也可以拖动
+            container.addEventListener('click', (e) => {
+                if (e.target === slider) return;
+                updateSlider(e.clientX);
+            });
+        }
+
+        function downloadImage() {
+            if (!processedImage) return;
+
+            // 创建下载链接
+            const link = document.createElement('a');
+            link.download = `clearworld_${settings.scale}x.${settings.format}`;
+            link.href = processedImage;
+            link.click();
+
+            showToast('图片下载已开始');
+        }
+
+        function resetProcess() {
+            originalImage = null;
+            processedImage = null;
+            document.getElementById('upload-area').style.display = 'flex';
+            document.getElementById('preview-area').style.display = 'none';
+            document.getElementById('compareContainer').style.display = 'none';
+            document.getElementById('processBtn').disabled = true;
+            document.getElementById('processBtn').style.opacity = '0.5';
+            document.getElementById('processBtn').style.cursor = 'not-allowed';
+            document.getElementById('processFileInput').value = '';
+        }
+
+        // 会员选择
+        function selectVipPlan(index) {
+            const plans = ['季度卡 - ¥19.9', '年卡 - ¥49', '终身 - ¥99'];
+            document.getElementById('payment-plan').textContent = plans[index];
+            document.getElementById('payment-modal').style.display = 'block';
+            // 弹窗动画
+            document.getElementById('payment-modal').style.animation = 'popIn 0.3s ease-out';
+        }
+
+        function closePaymentModal() {
+            document.getElementById('payment-modal').style.display = 'none';
+        }
+
+        // 点击弹窗外部关闭
+        document.addEventListener('click', function(e) {
+            const modal = document.getElementById('payment-modal');
+            if (modal && modal.style.display === 'block' && !modal.contains(e.target)) {
+                const buttons = document.querySelectorAll('.vip-plan-btn');
+                let clickedButton = false;
+                buttons.forEach(btn => {
+                    if (btn.contains(e.target)) clickedButton = true;
+                });
+                if (!clickedButton && !e.target.closest('.vip-card')) {
+                    closePaymentModal();
+                }
+            }
+        });
+
+        // ESC 键关闭支付弹窗
+        document.addEventListener('keydown', function(e) {
+            if (e.key === 'Escape') {
+                closePaymentModal();
+            }
+        });
+
+        // 支付处理
+        function handlePayment(method) {
+            const plan = document.getElementById('payment-plan').textContent;
+            alert(`${method} 支付功能演示\n\n您选择了: ${plan}\n\n这是演示版本，实际支付功能需要接入微信/支付宝官方接口。`);
+            document.getElementById('payment-modal').style.display = 'none';
+        }
+
+        // 按钮点击波纹效果
+        function addRippleEffect(btn) {
+            btn.style.position = 'relative';
+            btn.style.overflow = 'hidden';
+            btn.onclick = function(e) {
+                const ripple = document.createElement('span');
+                const rect = this.getBoundingClientRect();
+                const size = Math.max(rect.width, rect.height);
+                ripple.style.width = ripple.style.height = size + 'px';
+                ripple.style.left = (e.clientX - rect.left - size/2) + 'px';
+                ripple.style.top = (e.clientY - rect.top - size/2) + 'px';
+                ripple.style.position = 'absolute';
+                ripple.style.background = 'rgba(255,255,255,0.3)';
+                ripple.style.borderRadius = '50%';
+                ripple.style.transform = 'scale(0)';
+                ripple.style.animation = 'ripple 0.6s linear';
+                this.appendChild(ripple);
+                setTimeout(() => ripple.remove(), 600);
+            };
+        }
+
+        // 添加CSS动画
+        const style = document.createElement('style');
+        style.textContent = `
+            @keyframes ripple {
+                to { transform: scale(4); opacity: 0; }
+            }
+            @keyframes pulse {
+                0%, 100% { opacity: 1; }
+                50% { opacity: 0.7; }
+            }
+            @keyframes float {
+                0%, 100% { transform: translateY(0); }
+                50% { transform: translateY(-10px); }
+            }
+            @keyframes shimmer {
+                0% { background-position: -200% 0; }
+                100% { background-position: 200% 0; }
+            }
+            .vip-card:hover { transform: translateY(-8px); box-shadow: 0 20px 40px rgba(124, 58, 237, 0.3); }
+            #vip-card-year:hover { transform: translateY(-8px) scale(1.05); }
+            .vip-plan-btn:hover { transform: scale(1.02); box-shadow: 0 8px 25px rgba(168, 85, 247, 0.4); }
+            .feature-card:active { transform: scale(0.98); }
+            .glass-card { animation: fadeIn 0.5s ease-out; }
+            @keyframes fadeIn { from { opacity: 0; transform: translateY(20px); } to { opacity: 1; transform: translateY(0); } }
+            .page { animation: pageIn 0.3s ease-out; }
+            @keyframes pageIn { from { opacity: 0; } to { opacity: 1; } }
+            .toast { animation: slideIn 0.3s ease-out; }
+            @keyframes slideIn { from { transform: translateX(100%); opacity: 0; } to { transform: translateX(0); opacity: 1; } }
+            @keyframes popIn { from { transform: scale(0.8); opacity: 0; } to { transform: scale(1); opacity: 1; } }
+        `;
+        document.head.appendChild(style);
+
+        // 显示提示消息
+        function showToast(message, type = 'success') {
+            const toast = document.createElement('div');
+            toast.className = 'toast';
+            toast.style.cssText = `
+                position: fixed; top: 20px; right: 20px; z-index: 1000;
+                padding: 16px 24px; border-radius: 12px; color: white;
+                font-weight: 500; display: flex; align-items: center; gap: 12px;
+                background: ${type === 'success' ? 'linear-gradient(135deg, #22c55e, #16a34a)' : 'linear-gradient(135deg, #ef4444, #dc2626)'};
+                box-shadow: 0 10px 30px rgba(0,0,0,0.3);
+            `;
+            toast.innerHTML = `
+                <svg width="20" height="20" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+                    <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M5 13l4 4L19 7"/>
+                </svg>
+                ${message}
+            `;
+            document.body.appendChild(toast);
+            setTimeout(() => toast.remove(), 3000);
+        }
+
+        // 处理页图片加载动画
+        function animateImageLoad(img) {
+            img.style.opacity = '0';
+            img.style.transition = 'opacity 0.5s ease';
+            img.onload = () => img.style.opacity = '1';
+        }
+
+        // 登录/注册
+        function togglePassword(id) {
+            const input = document.getElementById(id);
+            input.type = input.type === 'password' ? 'text' : 'password';
+        }
+
+        function handleLogin(e) {
+            e.preventDefault();
+            const email = document.getElementById('login-email').value;
+            const password = document.getElementById('login-password').value;
+
+            if (!email || !password) {
+                showToast('请填写完整信息', 'error');
+                return;
+            }
+
+            // 模拟登录
+            const btn = e.target.querySelector('button[type="submit"]');
+            btn.innerHTML = '登录中...';
+            btn.disabled = true;
+
+            setTimeout(() => {
+                showToast('登录成功！欢迎回来');
+                showPage('profile');
+                btn.innerHTML = '立即登录';
+                btn.disabled = false;
+            }, 1000);
+        }
+
+        function handleRegister(e) {
+            e.preventDefault();
+            const email = document.getElementById('reg-email').value;
+            const p1 = document.getElementById('reg-password').value;
+            const p2 = document.getElementById('reg-confirm').value;
+
+            if (!email || !p1 || !p2) {
+                showToast('请填写完整信息', 'error');
+                return;
+            }
+
+            if (p1 !== p2) {
+                showToast('两次输入的密码不一致', 'error');
+                return;
+            }
+
+            if (p1.length < 6) {
+                showToast('密码长度至少6位', 'error');
+                return;
+            }
+
+            // 模拟注册
+            const btn = document.getElementById('reg-submit');
+            btn.innerHTML = '注册中...';
+            btn.disabled = true;
+
+            setTimeout(() => {
+                showToast('注册成功！欢迎加入 ClearWorld');
+                showPage('profile');
+                btn.innerHTML = '立即注册';
+                btn.disabled = false;
+            }, 1000);
+        }
+
+        // 协议复选框
+        document.getElementById('reg-agree')?.addEventListener('change', function() {
+            const btn = document.getElementById('reg-submit');
+            btn.disabled = !this.checked;
+            btn.style.opacity = this.checked ? '1' : '0.5';
+            btn.style.cursor = this.checked ? 'pointer' : 'not-allowed';
+        });
+
+        // 拖拽上传 - 处理页
+        const uploadArea = document.getElementById('upload-area');
+        uploadArea?.addEventListener('dragover', (e) => {
+            e.preventDefault();
+            uploadArea.classList.add('active');
+        });
+        uploadArea?.addEventListener('dragleave', () => {
+            uploadArea.classList.remove('active');
+        });
+        uploadArea?.addEventListener('drop', (e) => {
+            e.preventDefault();
+            uploadArea.classList.remove('active');
+            const file = e.dataTransfer.files[0];
+            if (file && file.type.startsWith('image/')) {
+                const input = document.getElementById('processFileInput');
+                const dt = new DataTransfer();
+                dt.items.add(file);
+                input.files = dt.files;
+                handleProcessFile(input);
+            }
+        });
+
+        // 拖拽上传 - 首页（跳转到处理页）
+        const homeUpload = document.getElementById('home-upload');
+        homeUpload?.addEventListener('dragover', (e) => {
+            e.preventDefault();
+            homeUpload.classList.add('active');
+        });
+        homeUpload?.addEventListener('dragleave', () => {
+            homeUpload.classList.remove('active');
+        });
+        homeUpload?.addEventListener('drop', (e) => {
+            e.preventDefault();
+            homeUpload.classList.remove('active');
+            // 拖拽图片到首页也跳转到处理页
+            showPage('process');
+        });
+    </script>
+</body>
+</html>
