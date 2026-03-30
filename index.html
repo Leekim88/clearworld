@@ -434,7 +434,7 @@
     <div class="liquid-orb orb-3"></div>
 
     <!-- 首页 -->
-    <div id="page-home" class="page active">
+    <div id="page-home" class="page active" style="opacity: 1;">
         <header class="glass-card border-b border-white/10" style="position: relative; z-index: 10;">
             <div style="max-width: 1200px; margin: 0 auto; padding: 16px 24px; display: flex; align-items: center; justify-content: space-between;">
                 <div style="display: flex; align-items: center; gap: 12px;">
@@ -529,6 +529,7 @@
                 <div style="display: flex; gap: 24px; align-items: center;">
                     <a href="#" class="nav-link" onclick="showPage('help')">帮助中心</a>
                     <a href="#" class="nav-link" onclick="showCustomerService()">联系客服</a>
+                    <a href="#" onclick="showPage('admin')" style="font-size: 12px; color: rgba(255,255,255,0.2); text-decoration: none;">管理</a>
                 </div>
             </div>
         </footer>
@@ -1523,8 +1524,24 @@
             localStorage.removeItem('clearworld_user');
             currentUser = null;
             showToast('已退出登录');
-            // 刷新页面重新加载导航
-            location.reload();
+            // 恢复导航栏
+            const nav = document.querySelector('nav');
+            if (nav) {
+                nav.innerHTML = `
+                    <a href="#" class="nav-link" onclick="showPage('batch')">批量处理</a>
+                    <a href="#" class="nav-link" onclick="showPage('help')">帮助中心</a>
+                    <a href="#" class="nav-link" onclick="showPage('profile')">用户中心</a>
+                    <a href="#" class="nav-link" onclick="showPage('vip')">会员中心</a>
+                    <a href="#" class="nav-link" onclick="showPage('login')">登录</a>
+                    <button onclick="showPage('register')" class="btn-gradient" style="padding: 8px 20px; border-radius: 12px; font-weight: 600;">注册</button>
+                `;
+            }
+            // 刷新用户中心页面
+            if (currentPage === 'profile') {
+                renderHistory();
+                renderProfile();
+                renderVipStatus();
+            }
         }
 
         // 页面加载时检查登录状态
@@ -1550,6 +1567,28 @@
                 renderHistory();
                 renderProfile();
                 renderVipStatus();
+            };
+            // 处理页：检查是否有待处理图片
+            if (page === 'process') {
+                const pendingImage = localStorage.getItem('pending_image');
+                if (pendingImage) {
+                    localStorage.removeItem('pending_image');
+                    // 自动加载图片
+                    const img = new Image();
+                    img.onload = function() {
+                        originalImage = pendingImage;
+                        document.getElementById('preview-img').src = pendingImage;
+                        document.getElementById('upload-area').style.display = 'none';
+                        document.getElementById('preview-area').style.display = 'block';
+                        document.getElementById('image-preview').style.display = 'block';
+                        document.getElementById('preview-buttons').style.display = 'flex';
+                        document.getElementById('processBtn').disabled = false;
+                        document.getElementById('processBtn').style.opacity = '1';
+                        document.getElementById('processBtn').style.cursor = 'pointer';
+                        processedImage = null;
+                    };
+                    img.src = pendingImage;
+                }
             };
         }
 
@@ -2294,8 +2333,17 @@
         homeUpload?.addEventListener('drop', (e) => {
             e.preventDefault();
             homeUpload.classList.remove('active');
-            // 拖拽图片到首页也跳转到处理页
-            showPage('process');
+            const files = e.dataTransfer.files;
+            if (files.length > 0 && files[0].type.startsWith('image/')) {
+                const reader = new FileReader();
+                reader.onload = function(event) {
+                    localStorage.setItem('pending_image', event.target.result);
+                    showPage('process');
+                };
+                reader.readAsDataURL(files[0]);
+            } else {
+                showPage('process');
+            }
         });
 
         // 批量处理相关
