@@ -1454,8 +1454,9 @@
                 </div>
 
                 <!-- 支付弹窗 -->
-                <div id="payment-modal" style="display: none; position: fixed; top: 0; left: 0; width: 100%; height: 100%; background: rgba(0,0,0,0.7); z-index: 1000; align-items: center; justify-content: center;" onclick="closePaymentModal(event)">
-                    <div class="glass-card" style="border-radius: 16px; padding: 24px; max-width: 400px; position: relative;" onclick="event.stopPropagation()">
+                <div id="payment-modal" style="display: none; position: fixed; top: 0; left: 0; width: 100%; height: 100%; background: rgba(0,0,0,0.7); z-index: 1000;" onclick="closePaymentModal(event)">
+                    <div style="display: flex; align-items: center; justify-content: center; width: 100%; height: 100%;" onclick="event.stopPropagation()">
+                    <div class="glass-card" style="border-radius: 16px; padding: 24px; max-width: 400px; position: relative;">
                     <button onclick="closePaymentModal()" style="position: absolute; top: 16px; right: 16px; background: none; border: none; color: #9ca3af; cursor: pointer; padding: 4px;">
                         <svg width="24" height="24" fill="none" stroke="currentColor" viewBox="0 0 24 24">
                             <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M6 18L18 6M6 6l12 12"/>
