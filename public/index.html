@@ -1454,7 +1454,8 @@
                 </div>
 
                 <!-- 支付弹窗 -->
-                <div id="payment-modal" class="glass-card" style="border-radius: 16px; padding: 24px; max-width: 400px; margin: 0 auto; display: none; position: relative;">
+                <div id="payment-modal" style="display: none; position: fixed; top: 0; left: 0; width: 100%; height: 100%; background: rgba(0,0,0,0.7); z-index: 1000; align-items: center; justify-content: center;" onclick="closePaymentModal(event)">
+                    <div class="glass-card" style="border-radius: 16px; padding: 24px; max-width: 400px; position: relative;" onclick="event.stopPropagation()">
                     <button onclick="closePaymentModal()" style="position: absolute; top: 16px; right: 16px; background: none; border: none; color: #9ca3af; cursor: pointer; padding: 4px;">
                         <svg width="24" height="24" fill="none" stroke="currentColor" viewBox="0 0 24 24">
                             <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M6 18L18 6M6 6l12 12"/>
@@ -2043,8 +2044,10 @@
             document.getElementById('payment-modal').style.animation = 'popIn 0.3s ease-out';
         }
 
-        function closePaymentModal() {
-            document.getElementById('payment-modal').style.display = 'none';
+        function closePaymentModal(event) {
+            if (!event || event.target === document.getElementById('payment-modal')) {
+                document.getElementById('payment-modal').style.display = 'none';
+            }
         }
 
         // 点击弹窗外部关闭
