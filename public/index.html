@@ -911,17 +911,17 @@
                 <!-- 用户信息 -->
                 <div class="glass-card" style="border-radius: 16px; padding: 24px; margin-bottom: 24px;">
                     <div style="display: flex; align-items: center; gap: 24px;">
-                        <div style="width: 80px; height: 80px; border-radius: 50%; background: linear-gradient(135deg, #7c3aed, #c026d3); display: flex; align-items: center; justify-content: center; font-size: 32px; font-weight: bold;">
-                            ${currentUser ? (currentUser.email ? currentUser.email[0].toUpperCase() : 'U') : 'U'}
+                        <div id="profile-avatar" style="width: 80px; height: 80px; border-radius: 50%; background: linear-gradient(135deg, #7c3aed, #c026d3); display: flex; align-items: center; justify-content: center; font-size: 32px; font-weight: bold; color: white;">
+                            U
                         </div>
                         <div style="flex: 1;">
-                            <h1 style="font-size: 20px; font-weight: 600; color: white;">${currentUser ? (currentUser.email ? currentUser.email.split('@')[0] : '用户') : '游客'}</h1>
-                            <p style="color: #9ca3af;">${currentUser ? (currentUser.email || '未设置邮箱') : '登录查看更多'}</p>
+                            <h1 id="profile-name" style="font-size: 20px; font-weight: 600; color: white;">游客</h1>
+                            <p id="profile-email" style="color: #9ca3af;">登录查看更多</p>
                             <div style="display: flex; align-items: center; gap: 16px; margin-top: 8px;">
-                                <span style="padding: 4px 12px; background: rgba(234,179,8,0.2); color: #eab308; border-radius: 999px; font-size: 14px;">
-                                    ${currentUser ? '免费用户' : '游客'
+                                <span id="profile-vip" style="padding: 4px 12px; background: rgba(234,179,8,0.2); color: #eab308; border-radius: 999px; font-size: 14px;">
+                                    游客
                                 </span>
-                                <span style="color: #6b7280; font-size: 14px;">剩余次数：1/天</span>
+                                <span id="profile-remaining" style="color: #6b7280; font-size: 14px;">剩余次数：1/天</span>
                             </div>
                         </div>
                         <button onclick="showPage('vip')" class="btn-gradient" style="padding: 12px 24px; border-radius: 12px; font-weight: 600;">
@@ -964,14 +964,8 @@
                 <!-- 会员中心 -->
                 <div id="tab-content-vip" class="glass-card" style="border-radius: 16px; padding: 24px; display: none;">
                     <h2 style="font-size: 18px; font-weight: 600; margin-bottom: 16px;">会员中心</h2>
-                    <div style="text-align: center; padding: 32px;">
-                        <div style="width: 64px; height: 64px; margin: 0 auto 16px; border-radius: 50%; background: rgba(234,179,8,0.2); display: flex; align-items: center; justify-content: center;">
-                            <svg width="32" height="32" fill="#eab308" viewBox="0 0 24 24">
-                                <path d="M12 2l2.4 7.2h7.6l-6 4.8 2.4 7.2-6-4.8-6 4.8 2.4-7.2-6-4.8h7.6z"/>
-                            </svg>
-                        </div>
-                        <p style="color: #9ca3af; margin-bottom: 24px;">开通会员，享无限次处理 + 批量处理</p>
-                        <button onclick="showPage('vip')" class="btn-gradient" style="padding: 12px 32px; border-radius: 12px; font-weight: 600; display: inline-block;">立即开通</button>
+                    <div id="vip-status-panel">
+                        <!-- 会员状态将通过 JS 渲染 -->
                     </div>
                 </div>
             </div>
@@ -1192,6 +1186,10 @@
                 currentUser = JSON.parse(savedUser);
                 updateNavForLoggedIn();
             }
+            // 页面加载时也更新用户中心显示
+            if (document.getElementById('page-profile')?.classList.contains('active')) {
+                renderProfile();
+            }
         }
 
         // 更新导航栏（登录后）
@@ -1229,7 +1227,118 @@
 
             // 初始化页面内容
             if (page === 'help') renderFaqs();
-            if (page === 'profile') renderHistory();
+            if (page === 'profile') {
+                renderHistory();
+                renderProfile();
+                renderVipStatus();
+            };
+        }
+
+        // 渲染用户信息
+        function renderProfile() {
+            const avatar = document.getElementById('profile-avatar');
+            const name = document.getElementById('profile-name');
+            const email = document.getElementById('profile-email');
+            const vip = document.getElementById('profile-vip');
+            const remaining = document.getElementById('profile-remaining');
+
+            if (currentUser) {
+                // 已登录
+                const emailPrefix = currentUser.email ? currentUser.email.split('@')[0] : '用户';
+                avatar.textContent = currentUser.email ? currentUser.email[0].toUpperCase() : 'U';
+                name.textContent = emailPrefix;
+                email.textContent = currentUser.email || '未设置邮箱';
+                vip.textContent = currentUser.isVip ? 'VIP会员' : '免费用户';
+                vip.style.background = currentUser.isVip ? 'linear-gradient(135deg, #facc15, #eab308)' : 'rgba(234,179,8,0.2)';
+                vip.style.color = currentUser.isVip ? '#000' : '#eab308';
+                remaining.textContent = currentUser.isVip ? '无限次处理' : '剩余次数：1/天';
+            } else {
+                // 未登录
+                avatar.textContent = 'U';
+                name.textContent = '游客';
+                email.textContent = '登录查看更多';
+                vip.textContent = '游客';
+                vip.style.background = 'rgba(255,255,255,0.1)';
+                vip.style.color = 'rgba(255,255,255,0.5)';
+                remaining.textContent = '剩余次数：1/天';
+            }
+        }
+
+        // 渲染会员状态
+        function renderVipStatus() {
+            const panel = document.getElementById('vip-status-panel');
+            if (!panel) return;
+
+            if (!currentUser) {
+                panel.innerHTML = `
+                    <div style="text-align: center; padding: 32px;">
+                        <div style="width: 64px; height: 64px; margin: 0 auto 16px; border-radius: 50%; background: rgba(234,179,8,0.2); display: flex; align-items: center; justify-content: center;">
+                            <svg width="32" height="32" fill="#eab308" viewBox="0 0 24 24">
+                                <path d="M12 2l2.4 7.2h7.6l-6 4.8 2.4 7.2-6-4.8-6 4.8 2.4-7.2-6-4.8h7.6z"/>
+                            </svg>
+                        </div>
+                        <p style="color: #9ca3af; margin-bottom: 24px;">登录后可查看会员状态</p>
+                        <button onclick="showPage('login')" class="btn-gradient" style="padding: 12px 32px; border-radius: 12px; font-weight: 600; display: inline-block;">立即登录</button>
+                    </div>
+                `;
+                return;
+            }
+
+            if (currentUser.isVip) {
+                panel.innerHTML = `
+                    <div style="text-align: center; padding: 32px;">
+                        <div style="width: 80px; height: 80px; margin: 0 auto 16px; border-radius: 50%; background: linear-gradient(135deg, #facc15, #eab308); display: flex; align-items: center; justify-content: center; box-shadow: 0 10px 30px rgba(234,179,8,0.3);">
+                            <svg width="40" height="40" fill="#000" viewBox="0 0 24 24">
+                                <path d="M12 2l2.4 7.2h7.6l-6 4.8 2.4 7.2-6-4.8-6 4.8 2.4-7.2-6-4.8h7.6z"/>
+                            </svg>
+                        </div>
+                        <h3 style="font-size: 24px; font-weight: 600; margin-bottom: 8px; color: #facc15;">VIP会员</h3>
+                        <p style="color: #9ca3af; margin-bottom: 24px;">您已开通VIP会员，享无限次处理</p>
+                        <div style="background: rgba(255,255,255,0.05); border-radius: 12px; padding: 16px; margin-bottom: 24px; text-align: left;">
+                            <div style="display: flex; justify-content: space-between; margin-bottom: 8px;">
+                                <span style="color: rgba(255,255,255,0.6);">会员类型</span>
+                                <span style="color: #facc15;">${currentUser.vipType || '年卡会员'}</span>
+                            </div>
+                            <div style="display: flex; justify-content: space-between; margin-bottom: 8px;">
+                                <span style="color: rgba(255,255,255,0.6);">到期时间</span>
+                                <span style="color: white;">${currentUser.vipExpire || '2025-12-31'}</span>
+                            </div>
+                            <div style="display: flex; justify-content: space-between;">
+                                <span style="color: rgba(255,255,255,0.6);">剩余处理次数</span>
+                                <span style="color: #22c55e;">无限</span>
+                            </div>
+                        </div>
+                        <button onclick="showPage('vip')" style="padding: 12px 32px; border-radius: 12px; background: rgba(255,255,255,0.1); border: 1px solid rgba(255,255,255,0.2); color: white; font-weight: 600; cursor: pointer;">续费会员</button>
+                    </div>
+                `;
+            } else {
+                panel.innerHTML = `
+                    <div style="text-align: center; padding: 32px;">
+                        <div style="width: 64px; height: 64px; margin: 0 auto 16px; border-radius: 50%; background: rgba(234,179,8,0.2); display: flex; align-items: center; justify-content: center;">
+                            <svg width="32" height="32" fill="#eab308" viewBox="0 0 24 24">
+                                <path d="M12 2l2.4 7.2h7.6l-6 4.8 2.4 7.2-6-4.8-6 4.8 2.4-7.2-6-4.8h7.6z"/>
+                            </svg>
+                        </div>
+                        <h3 style="font-size: 20px; font-weight: 600; margin-bottom: 8px;">免费用户</h3>
+                        <p style="color: #9ca3af; margin-bottom: 24px;">开通VIP会员，享无限次处理 + 批量处理</p>
+                        <div style="background: rgba(255,255,255,0.05); border-radius: 12px; padding: 16px; margin-bottom: 24px; text-align: left;">
+                            <div style="display: flex; justify-content: space-between; margin-bottom: 8px;">
+                                <span style="color: rgba(255,255,255,0.6);">当前状态</span>
+                                <span style="color: white;">免费用户</span>
+                            </div>
+                            <div style="display: flex; justify-content: space-between; margin-bottom: 8px;">
+                                <span style="color: rgba(255,255,255,0.6);">今日剩余次数</span>
+                                <span style="color: #22c55e;">1次</span>
+                            </div>
+                            <div style="display: flex; justify-content: space-between;">
+                                <span style="color: rgba(255,255,255,0.6);">批量处理</span>
+                                <span style="color: #ef4444;">不支持</span>
+                            </div>
+                        </div>
+                        <button onclick="showPage('vip')" class="btn-gradient" style="padding: 12px 32px; border-radius: 12px; font-weight: 600; display: inline-block;">立即开通VIP</button>
+                    </div>
+                `;
+            }
         }
 
         // FAQ 数据和渲染
@@ -1760,7 +1869,7 @@
 
             setTimeout(() => {
                 // 保存登录状态
-                currentUser = { email: email };
+                currentUser = { email: email, isVip: false };
                 localStorage.setItem('clearworld_user', JSON.stringify(currentUser));
                 updateNavForLoggedIn();
                 showToast('登录成功！欢迎回来');
@@ -1798,7 +1907,7 @@
 
             setTimeout(() => {
                 // 自动登录
-                currentUser = { email: email };
+                currentUser = { email: email, isVip: false };
                 localStorage.setItem('clearworld_user', JSON.stringify(currentUser));
                 updateNavForLoggedIn();
                 showToast('注册成功！欢迎加入 ClearWorld');
