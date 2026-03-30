@@ -349,6 +349,7 @@
                     <span style="font-size: 20px; font-weight: 600;">ClearWorld</span>
                 </div>
                 <nav style="display: flex; align-items: center; gap: 24px;">
+                    <a href="#" class="nav-link" onclick="showPage('batch')">批量处理</a>
                     <a href="#" class="nav-link" onclick="showPage('help')">帮助中心</a>
                     <a href="#" class="nav-link" onclick="showPage('profile')">用户中心</a>
                     <a href="#" class="nav-link" onclick="showPage('vip')">会员中心</a>
@@ -470,6 +471,12 @@
                             <div id="preview-buttons" style="display: none; justify-content: center; gap: 16px; margin-top: 16px;">
                                 <button onclick="downloadImage()" class="btn-gradient" style="padding: 12px 24px; border-radius: 12px; font-weight: 600;">
                                     下载高清图
+                                </button>
+                                <button onclick="shareResult()" style="padding: 12px 24px; border-radius: 12px; border: 1px solid rgba(255,255,255,0.2); color: white; font-weight: 600; background: transparent; display: flex; align-items: center; gap: 8px;">
+                                    <svg width="18" height="18" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+                                        <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M8.684 13.342C8.886 12.938 9 12.482 9 12c0-.482-.114-.938-.316-1.342m0 2.684a3 3 0 110-2.684m0 2.684l6.632 3.316m-6.632-6l6.632-3.316m0 0a3 3 0 105.367-2.684 3 3 0 00-5.367 2.684zm0 9.316a3 3 0 105.368 2.684 3 3 0 00-5.368-2.684z" />
+                                    </svg>
+                                    分享
                                 </button>
                                 <button onclick="resetProcess()" style="padding: 12px 24px; border-radius: 12px; border: 1px solid rgba(255,255,255,0.2); color: white; font-weight: 600; background: transparent;">
                                     处理新图片
@@ -725,6 +732,121 @@
                 </p>
             </div>
         </div>
+    </div>
+
+    <!-- 批量处理 -->
+    <div id="page-batch" class="page">
+        <header class="glass-card border-b border-white/10" style="position: relative; z-index: 10;">
+            <div style="max-width: 1200px; margin: 0 auto; padding: 16px 24px; display: flex; align-items: center; justify-content: space-between;">
+                <div style="display: flex; align-items: center; gap: 12px; cursor: pointer;" onclick="showPage('home')">
+                    <div style="width: 40px; height: 40px; border-radius: 12px; background: linear-gradient(135deg, #7c3aed, #c026d3); display: flex; align-items: center; justify-content: center; box-shadow: 0 10px 30px rgba(124, 58, 237, 0.3);">
+                        <svg width="24" height="24" fill="none" stroke="white" viewBox="0 0 24 24">
+                            <rect x="3" y="3" width="18" height="18" rx="2" stroke-width="2"/>
+                            <circle cx="8.5" cy="8.5" r="1.5" fill="white"/>
+                            <polyline points="21 15 16 10 5 21" stroke-width="2"/>
+                        </svg>
+                    </div>
+                    <span style="font-size: 20px; font-weight: 600;">ClearWorld</span>
+                </div>
+                <a href="#" onclick="showPage('home')" class="nav-link">返回首页</a>
+            </div>
+        </header>
+
+        <main style="padding: 40px 24px; position: relative; z-index: 10;">
+            <div style="max-width: 1000px; margin: 0 auto;">
+                <h1 style="font-size: 32px; font-weight: 600; text-align: center; margin-bottom: 8px;">批量处理</h1>
+                <p style="color: rgba(255,255,255,0.5); text-align: center; margin-bottom: 32px;">一次上传多张图片，批量提升分辨率</p>
+
+                <!-- 批量上传区域 -->
+                <div id="batch-upload-zone" class="upload-zone" style="border-radius: 16px; padding: 48px; margin-bottom: 24px;">
+                    <div style="display: flex; flex-direction: column; align-items: center; gap: 16px;">
+                        <div style="width: 64px; height: 64px; border-radius: 16px; background: linear-gradient(135deg, rgba(124,58,237,0.2), rgba(192,38,211,0.1)); display: flex; align-items: center; justify-content: center;">
+                            <svg width="32" height="32" stroke="#a855f7" fill="none" viewBox="0 0 24 24">
+                                <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M7 16a4 4 0 01-.88-7.903A5 5 0 1115.9 6L16 6a5 5 0 011 9.9M15 13l-3-3m0 0l-3 3m3-3v12" />
+                            </svg>
+                        </div>
+                        <div>
+                            <p style="font-size: 18px; font-weight: 500; margin-bottom: 8px;">点击或拖拽多张图片到此处</p>
+                            <p style="color: rgba(255,255,255,0.4);">支持 PNG, JPG, WEBP, GIF，最多 20 张</p>
+                        </div>
+                        <input type="file" id="batch-file-input" multiple accept="image/*" style="display: none;" onchange="handleBatchFiles(this.files)">
+                        <button onclick="document.getElementById('batch-file-input').click()" class="btn-gradient" style="padding: 10px 24px; border-radius: 12px; font-weight: 600;">
+                            选择图片
+                        </button>
+                    </div>
+                </div>
+
+                <!-- 已选图片列表 -->
+                <div id="batch-file-list" class="glass-card" style="border-radius: 16px; padding: 20px; margin-bottom: 24px; display: none;">
+                    <div style="display: flex; justify-content: space-between; align-items: center; margin-bottom: 16px;">
+                        <h3 style="font-weight: 600;">已选图片 (<span id="batch-count">0</span>张)</h3>
+                        <button onclick="clearBatchFiles()" style="color: rgba(255,255,255,0.5); background: none; border: none; cursor: pointer;">清空全部</button>
+                    </div>
+                    <div id="batch-thumbnails" style="display: grid; grid-template-columns: repeat(auto-fill, minmax(100px, 1fr)); gap: 12px;"></div>
+                </div>
+
+                <!-- 处理设置 -->
+                <div class="glass-card" style="border-radius: 16px; padding: 24px; margin-bottom: 24px;">
+                    <h3 style="font-weight: 600; margin-bottom: 20px;">处理设置</h3>
+                    <div style="display: grid; grid-template-columns: repeat(3, 1fr); gap: 24px;">
+                        <div>
+                            <label style="display: block; color: rgba(255,255,255,0.6); margin-bottom: 8px; font-size: 14px;">放大倍数</label>
+                            <div style="display: flex; gap: 8px;">
+                                <button class="batch-scale-btn active" data-scale="2" onclick="selectBatchScale(2)" style="flex: 1; padding: 10px; border-radius: 8px; background: rgba(124,58,237,0.2); border: 1px solid rgba(124,58,237,0.5); color: white; cursor: pointer;">2x</button>
+                                <button class="batch-scale-btn" data-scale="4" onclick="selectBatchScale(4)" style="flex: 1; padding: 10px; border-radius: 8px; background: rgba(255,255,255,0.05); border: 1px solid rgba(255,255,255,0.1); color: rgba(255,255,255,0.6); cursor: pointer;">4x</button>
+                            </div>
+                        </div>
+                        <div>
+                            <label style="display: block; color: rgba(255,255,255,0.6); margin-bottom: 8px; font-size: 14px;">输出格式</label>
+                            <div style="display: flex; gap: 8px;">
+                                <button class="batch-format-btn active" data-format="jpg" onclick="selectBatchFormat('jpg')" style="flex: 1; padding: 10px; border-radius: 8px; background: rgba(124,58,237,0.2); border: 1px solid rgba(124,58,237,0.5); color: white; cursor: pointer;">JPG</button>
+                                <button class="batch-format-btn" data-format="png" onclick="selectBatchFormat('png')" style="flex: 1; padding: 10px; border-radius: 8px; background: rgba(255,255,255,0.05); border: 1px solid rgba(255,255,255,0.1); color: rgba(255,255,255,0.6); cursor: pointer;">PNG</button>
+                                <button class="batch-format-btn" data-format="webp" onclick="selectBatchFormat('webp')" style="flex: 1; padding: 10px; border-radius: 8px; background: rgba(255,255,255,0.05); border: 1px solid rgba(255,255,255,0.1); color: rgba(255,255,255,0.6); cursor: pointer;">WEBP</button>
+                            </div>
+                        </div>
+                        <div>
+                            <label style="display: block; color: rgba(255,255,255,0.6); margin-bottom: 8px; font-size: 14px;">降噪程度</label>
+                            <div style="display: flex; gap: 8px;">
+                                <button class="batch-denoise-btn active" data-denoise="0" onclick="selectBatchDenoise(0)" style="flex: 1; padding: 10px; border-radius: 8px; background: rgba(124,58,237,0.2); border: 1px solid rgba(124,58,237,0.5); color: white; cursor: pointer;">无</button>
+                                <button class="batch-denoise-btn" data-denoise="1" onclick="selectBatchDenoise(1)" style="flex: 1; padding: 10px; border-radius: 8px; background: rgba(255,255,255,0.05); border: 1px solid rgba(255,255,255,0.1); color: rgba(255,255,255,0.6); cursor: pointer;">低</button>
+                                <button class="batch-denoise-btn" data-denoise="2" onclick="selectBatchDenoise(2)" style="flex: 1; padding: 10px; border-radius: 8px; background: rgba(255,255,255,0.05); border: 1px solid rgba(255,255,255,0.1); color: rgba(255,255,255,0.6); cursor: pointer;">中</button>
+                            </div>
+                        </div>
+                    </div>
+                </div>
+
+                <!-- 开始处理按钮 -->
+                <button id="batch-start-btn" onclick="startBatchProcess()" class="btn-gradient" style="width: 100%; padding: 16px; border-radius: 12px; font-size: 16px; font-weight: 600; margin-bottom: 24px; opacity: 0.5; cursor: not-allowed;" disabled>
+                    开始批量处理
+                </button>
+
+                <!-- 处理进度 -->
+                <div id="batch-progress" class="glass-card" style="border-radius: 16px; padding: 24px; display: none;">
+                    <div style="display: flex; justify-content: space-between; align-items: center; margin-bottom: 12px;">
+                        <h3 style="font-weight: 600;">处理进度</h3>
+                        <span id="batch-progress-text" style="color: rgba(255,255,255,0.6);">0 / 0</span>
+                    </div>
+                    <div class="progress-bar" style="margin-bottom: 16px;">
+                        <div id="batch-progress-bar" class="progress-fill" style="height: 100%; background: linear-gradient(90deg, #7c3aed, #c026d3); border-radius: 999px; width: 0%; transition: width 0.3s ease;"></div>
+                    </div>
+                    <p id="batch-current-file" style="color: rgba(255,255,255,0.4); font-size: 14px;">等待处理...</p>
+                </div>
+
+                <!-- 处理结果 -->
+                <div id="batch-result" class="glass-card" style="border-radius: 16px; padding: 24px; display: none;">
+                    <h3 style="font-weight: 600; margin-bottom: 16px; text-align: center;">处理完成！</h3>
+                    <div id="batch-result-list" style="display: grid; grid-template-columns: repeat(auto-fill, minmax(150px, 1fr)); gap: 16px; margin-bottom: 20px;"></div>
+                    <div style="display: flex; gap: 12px; justify-content: center;">
+                        <button onclick="downloadAllBatch()" class="btn-gradient" style="padding: 12px 24px; border-radius: 12px; font-weight: 600;">
+                            批量下载
+                        </button>
+                        <button onclick="startNewBatch()" style="padding: 12px 24px; border-radius: 12px; background: rgba(255,255,255,0.1); border: 1px solid rgba(255,255,255,0.2); color: white; cursor: pointer;">
+                            继续处理
+                        </button>
+                    </div>
+                </div>
+            </div>
+        </main>
     </div>
 
     <!-- 帮助中心 -->
@@ -1107,9 +1229,11 @@
 
         // 历史记录
         const historyData = [
-            { id: 1, date: '2024-01-15 14:30', name: 'photo_001.jpg', scale: '4x', model: '照片人像', status: 'completed' },
-            { id: 2, date: '2024-01-14 10:15', name: 'landscape.png', scale: '2x', model: '通用标准', status: 'completed' },
-            { id: 3, date: '2024-01-13 16:45', name: 'anime_art.jpg', scale: '4x', model: '动漫插画', status: 'completed' },
+            { id: 1, date: '2024-01-15 14:30', name: 'photo_001.jpg', scale: '4x', model: '照片人像', status: 'completed', original: '800x600', result: '3200x2400' },
+            { id: 2, date: '2024-01-14 10:15', name: 'landscape.png', scale: '2x', model: '通用标准', status: 'completed', original: '1920x1080', result: '3840x2160' },
+            { id: 3, date: '2024-01-13 16:45', name: 'anime_art.jpg', scale: '4x', model: '动漫插画', status: 'completed', original: '640x480', result: '2560x1920' },
+            { id: 4, date: '2024-01-12 09:20', name: 'portrait.png', scale: '4x', model: '照片人像', status: 'completed', original: '500x700', result: '2000x2800' },
+            { id: 5, date: '2024-01-11 11:45', name: 'product_01.webp', scale: '2x', model: '通用标准', status: 'completed', original: '1200x1200', result: '2400x2400' },
         ];
 
         function renderHistory() {
@@ -1124,20 +1248,63 @@
                         </div>
                         <div>
                             <p style="color: white; font-weight: 500;">${item.name}</p>
-                            <p style="color: #6b7280; font-size: 14px;">${item.date}</p>
+                            <p style="color: #6b7280; font-size: 14px;">${item.date} | ${item.original} → ${item.result}</p>
                         </div>
                     </div>
-                    <div style="display: flex; align-items: center; gap: 16px;">
+                    <div style="display: flex; align-items: center; gap: 12px;">
                         <span style="color: #9ca3af; font-size: 14px;">${item.scale} | ${item.model}</span>
                         <span style="padding: 4px 12px; background: rgba(34,197,94,0.2); color: #22c55e; border-radius: 999px; font-size: 14px;">已完成</span>
-                        <button style="background: none; border: none; color: #a855f7; cursor: pointer;">
-                            <svg width="20" height="20" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+                        <button onclick="viewHistoryDetail(${item.id})" style="background: none; border: none; color: rgba(255,255,255,0.5); cursor: pointer; padding: 4px;" title="查看">
+                            <svg width="18" height="18" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+                                <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M15 12a3 3 0 11-6 0 3 3 0 016 0z" />
+                                <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M2.458 12C3.732 7.943 7.523 5 12 5c4.478 0 8.268 2.943 9.542 7-1.274 4.057-5.064 7-9.542 7-4.477 0-8.268-2.943-9.542-7z" />
+                            </svg>
+                        </button>
+                        <button onclick="shareHistory(${item.id})" style="background: none; border: none; color: rgba(255,255,255,0.5); cursor: pointer; padding: 4px;" title="分享">
+                            <svg width="18" height="18" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+                                <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M8.684 13.342C8.886 12.938 9 12.482 9 12c0-.482-.114-.938-.316-1.342m0 2.684a3 3 0 110-2.684m0 2.684l6.632 3.316m-6.632-6l6.632-3.316m0 0a3 3 0 105.367-2.684 3 3 0 00-5.367 2.684zm0 9.316a3 3 0 105.368 2.684 3 3 0 00-5.368-2.684z" />
+                            </svg>
+                        </button>
+                        <button onclick="downloadHistory(${item.id})" style="background: none; border: none; color: #a855f7; cursor: pointer; padding: 4px;" title="下载">
+                            <svg width="18" height="18" fill="none" stroke="currentColor" viewBox="0 0 24 24">
                                 <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M4 16v1a3 3 0 003 3h10a3 3 0 003-3v-1m-4-4l-4 4m0 0l-4-4m4 4V4" />
                             </svg>
                         </button>
                     </div>
                 </div>
             `).join('');
+        }
+
+        function viewHistoryDetail(id) {
+            const item = historyData.find(h => h.id === id);
+            if (item) {
+                showToast(`查看 ${item.name} - ${item.scale}放大效果`, 'info');
+            }
+        }
+
+        function shareHistory(id) {
+            const item = historyData.find(h => h.id === id);
+            if (item) {
+                // 模拟分享
+                if (navigator.share) {
+                    navigator.share({
+                        title: 'ClearWorld 图片处理',
+                        text: `我使用 ClearWorld 将 ${item.name} 放大到 ${item.scale}！`,
+                        url: window.location.href
+                    });
+                } else {
+                    // 复制链接
+                    navigator.clipboard.writeText(window.location.href);
+                    showToast('链接已复制到剪贴板', 'success');
+                }
+            }
+        }
+
+        function downloadHistory(id) {
+            const item = historyData.find(h => h.id === id);
+            if (item) {
+                showToast(`下载 ${item.name} 功能需要后端支持`, 'info');
+            }
         }
 
         // 标签页切换
@@ -1341,6 +1508,27 @@
             link.click();
 
             showToast('图片下载已开始');
+        }
+
+        function shareResult() {
+            if (navigator.share) {
+                navigator.share({
+                    title: 'ClearWorld 图片处理',
+                    text: '我使用 ClearWorld 将图片处理成高清图，效果太棒了！',
+                    url: window.location.href
+                }).then(() => {
+                    showToast('分享成功');
+                }).catch(() => {
+                    // 用户取消分享
+                });
+            } else {
+                // 复制链接
+                navigator.clipboard.writeText(window.location.href).then(() => {
+                    showToast('链接已复制到剪贴板');
+                }).catch(() => {
+                    showToast('链接复制失败', 'error');
+                });
+            }
         }
 
         function resetProcess() {
@@ -1586,6 +1774,192 @@
             // 拖拽图片到首页也跳转到处理页
             showPage('process');
         });
+
+        // 批量处理相关
+        let batchFiles = [];
+        let batchScale = 2;
+        let batchFormat = 'jpg';
+        let batchDenoise = 0;
+        let batchResults = [];
+
+        // 批量上传拖拽
+        const batchUploadZone = document.getElementById('batch-upload-zone');
+        batchUploadZone?.addEventListener('dragover', (e) => {
+            e.preventDefault();
+            batchUploadZone.classList.add('active');
+        });
+        batchUploadZone?.addEventListener('dragleave', () => {
+            batchUploadZone.classList.remove('active');
+        });
+        batchUploadZone?.addEventListener('drop', (e) => {
+            e.preventDefault();
+            batchUploadZone.classList.remove('active');
+            handleBatchFiles(e.dataTransfer.files);
+        });
+
+        function handleBatchFiles(files) {
+            const validFiles = Array.from(files).filter(f => f.type.startsWith('image/'));
+            const remaining = 20 - batchFiles.length;
+            const toAdd = validFiles.slice(0, remaining);
+
+            toAdd.forEach(file => {
+                batchFiles.push({
+                    file: file,
+                    name: file.name,
+                    size: file.size,
+                    preview: URL.createObjectURL(file)
+                });
+            });
+
+            renderBatchFiles();
+
+            if (batchFiles.length > 0) {
+                document.getElementById('batch-start-btn').disabled = false;
+                document.getElementById('batch-start-btn').style.opacity = '1';
+                document.getElementById('batch-start-btn').style.cursor = 'pointer';
+            }
+        }
+
+        function renderBatchFiles() {
+            document.getElementById('batch-file-list').style.display = 'block';
+            document.getElementById('batch-count').textContent = batchFiles.length;
+
+            const container = document.getElementById('batch-thumbnails');
+            container.innerHTML = batchFiles.map((item, index) => `
+                <div style="position: relative; aspect-ratio: 1; border-radius: 8px; overflow: hidden; background: rgba(0,0,0,0.3);">
+                    <img src="${item.preview}" style="width: 100%; height: 100%; object-fit: cover;">
+                    <button onclick="removeBatchFile(${index})" style="position: absolute; top: 4px; right: 4px; width: 20px; height: 20px; border-radius: 50%; background: rgba(0,0,0,0.6); border: none; color: white; cursor: pointer; font-size: 12px; display: flex; align-items: center; justify-content: center;">×</button>
+                </div>
+            `).join('');
+        }
+
+        function removeBatchFile(index) {
+            URL.revokeObjectURL(batchFiles[index].preview);
+            batchFiles.splice(index, 1);
+            renderBatchFiles();
+
+            if (batchFiles.length === 0) {
+                document.getElementById('batch-start-btn').disabled = true;
+                document.getElementById('batch-start-btn').style.opacity = '0.5';
+                document.getElementById('batch-start-btn').style.cursor = 'not-allowed';
+            }
+        }
+
+        function clearBatchFiles() {
+            batchFiles.forEach(item => URL.revokeObjectURL(item.preview));
+            batchFiles = [];
+            renderBatchFiles();
+            document.getElementById('batch-start-btn').disabled = true;
+            document.getElementById('batch-start-btn').style.opacity = '0.5';
+            document.getElementById('batch-start-btn').style.cursor = 'not-allowed';
+        }
+
+        function selectBatchScale(scale) {
+            batchScale = scale;
+            document.querySelectorAll('.batch-scale-btn').forEach(btn => {
+                if (parseInt(btn.dataset.scale) === scale) {
+                    btn.style.background = 'rgba(124,58,237,0.2)';
+                    btn.style.borderColor = 'rgba(124,58,237,0.5)';
+                    btn.style.color = 'white';
+                } else {
+                    btn.style.background = 'rgba(255,255,255,0.05)';
+                    btn.style.borderColor = 'rgba(255,255,255,0.1)';
+                    btn.style.color = 'rgba(255,255,255,0.6)';
+                }
+            });
+        }
+
+        function selectBatchFormat(format) {
+            batchFormat = format;
+            document.querySelectorAll('.batch-format-btn').forEach(btn => {
+                if (btn.dataset.format === format) {
+                    btn.style.background = 'rgba(124,58,237,0.2)';
+                    btn.style.borderColor = 'rgba(124,58,237,0.5)';
+                    btn.style.color = 'white';
+                } else {
+                    btn.style.background = 'rgba(255,255,255,0.05)';
+                    btn.style.borderColor = 'rgba(255,255,255,0.1)';
+                    btn.style.color = 'rgba(255,255,255,0.6)';
+                }
+            });
+        }
+
+        function selectBatchDenoise(denoise) {
+            batchDenoise = denoise;
+            document.querySelectorAll('.batch-denoise-btn').forEach(btn => {
+                if (parseInt(btn.dataset.denoise) === denoise) {
+                    btn.style.background = 'rgba(124,58,237,0.2)';
+                    btn.style.borderColor = 'rgba(124,58,237,0.5)';
+                    btn.style.color = 'white';
+                } else {
+                    btn.style.background = 'rgba(255,255,255,0.05)';
+                    btn.style.borderColor = 'rgba(255,255,255,0.1)';
+                    btn.style.color = 'rgba(255,255,255,0.6)';
+                }
+            });
+        }
+
+        function startBatchProcess() {
+            if (batchFiles.length === 0) return;
+
+            document.getElementById('batch-progress').style.display = 'block';
+            document.getElementById('batch-result').style.display = 'none';
+
+            let processed = 0;
+            const total = batchFiles.length;
+
+            document.getElementById('batch-progress-text').textContent = `0 / ${total}`;
+            document.getElementById('batch-progress-bar').style.width = '0%';
+
+            // 模拟批量处理
+            batchFiles.forEach((item, index) => {
+                setTimeout(() => {
+                    document.getElementById('batch-current-file').textContent = `正在处理: ${item.name}`;
+                    processed++;
+                    document.getElementById('batch-progress-text').textContent = `${processed} / ${total}`;
+                    document.getElementById('batch-progress-bar').style.width = `${(processed / total) * 100}%`;
+
+                    // 保存结果
+                    batchResults.push({
+                        name: item.name.replace(/\.[^.]+$/, '') + `_${batchScale}x.${batchFormat}`,
+                        preview: item.preview
+                    });
+
+                    if (processed === total) {
+                        setTimeout(() => {
+                            document.getElementById('batch-progress').style.display = 'none';
+                            showBatchResult();
+                        }, 500);
+                    }
+                }, (index + 1) * 1500);
+            });
+        }
+
+        function showBatchResult() {
+            document.getElementById('batch-result').style.display = 'block';
+            const container = document.getElementById('batch-result-list');
+            container.innerHTML = batchResults.map(item => `
+                <div style="border-radius: 12px; overflow: hidden; background: rgba(0,0,0,0.3);">
+                    <img src="${item.preview}" style="width: 100%; aspect-ratio: 1; object-fit: cover;">
+                    <div style="padding: 8px; font-size: 12px; color: rgba(255,255,255,0.6); text-overflow: ellipsis; white-space: nowrap; overflow: hidden;">${item.name}</div>
+                </div>
+            `).join('');
+        }
+
+        function downloadAllBatch() {
+            showToast('批量下载功能需要后端支持', 'info');
+        }
+
+        function startNewBatch() {
+            batchFiles = [];
+            batchResults = [];
+            document.getElementById('batch-file-list').style.display = 'none';
+            document.getElementById('batch-result').style.display = 'none';
+            document.getElementById('batch-start-btn').disabled = true;
+            document.getElementById('batch-start-btn').style.opacity = '0.5';
+            document.getElementById('batch-start-btn').style.cursor = 'not-allowed';
+            document.getElementById('batch-file-input').value = '';
+        }
     </script>
 </body>
 </html>
